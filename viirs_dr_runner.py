@@ -612,13 +612,13 @@ def npp_rolling_runner():
                 tobj = viirs_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
-                subd = create_subdirname(tobj, orbit=viirs_proc.orbit)
+                subd = create_subdirname(tobj, orbit=viirs_proc.orbit_number)
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
                 sdr_files = viirs_proc.pack_sdr_files(subd)
                 make_okay_files(viirs_proc.sdr_home, subd)
 
                 publish_sdr(publisher, sdr_files,
-                            viirs_proc.orbit)
+                            viirs_proc.orbit_number)
 
                 for working_dir in viirs_proc.working_dirs:
                     LOG.info("Cleaning up directory %s" % working_dir)
