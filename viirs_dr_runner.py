@@ -46,7 +46,7 @@ CONFIG_PATH = os.environ.get('NPP_SDRPROC_CONFIG_DIR', _CONFIG_PATH)
 print "CONFIG_PATH: ", CONFIG_PATH
 
 CONF = ConfigParser.ConfigParser()
-CONF.read(os.path.join(CONFIG_PATH, "npp_sdr_config.cfg"))
+CONF.read(os.path.join(CONFIG_PATH, "viirs_dr_config.cfg"))
 
 MODE = os.getenv("SMHI_MODE")
 if MODE is None:
@@ -67,6 +67,8 @@ LUT_UPDATE_STAMPFILE_RPEFIX = OPTIONS['lut_update_stampfile_prefix']
 ANC_UPDATE_STAMPFILE_RPEFIX = OPTIONS['anc_update_stampfile_prefix']
 URL_DOWNLOAD_TRIAL_FREQUENCY_HOURS = OPTIONS[
     'url_download_trial_frequency_hours']
+
+VIIRS_SATELLITES = ['Suomi-NPP', 'JPSS-1', 'JPSS-2']
 
 from urlparse import urlparse
 import posttroll.subscriber
@@ -348,15 +350,16 @@ def publish_sdr(publisher, result_files, orbit):
         to_send = {}
         to_send['uri'] = ('ssh://%s/%s' % (SERVERNAME, result_file))
         to_send['filename'] = filename
-        to_send['instrument'] = 'viirs'
+        to_send['sensor'] = 'viirs'
         to_send['orbit_number'] = orbit
-        to_send['satellite'] = 'NPP'
+        to_send['platform_name'] = 'Suomi-NPP'
         to_send['format'] = 'SDR'
         to_send['type'] = 'HDF5'
-        to_send['level'] = '1'
+        to_send['data_processing_level'] = '1'
         to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
 
-        msg = Message('/' + to_send['format'] + '/' + to_send['level'] +
+        msg = Message('/' + to_send['format'] + '/' +
+                      to_send['data_processing_level'] +
                       '/norrköping/' + environment + '/polar/direct_readout/',
                       "file", to_send).encode()
         # msg = Message('/oper/polar/direct_readout/norrkoping',
@@ -406,7 +409,8 @@ class ViirsSdrProcessor(object):
         self.pool = ThreadPool(ncpus)
         self.ncpus = ncpus
 
-        self.orbit = 1  # Initialised orbit number
+        self.orbit_number = 1  # Initialised orbit number
+        self.platform_name = 'unknown'  # Ex.: Suomi-NPP
         self.fullswath = False
         self.cspp_results = []
         self.working_dirs = []
@@ -442,9 +446,9 @@ class ViirsSdrProcessor(object):
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
                                                            [keeper] + self.glist))
             return False
-        elif msg and not (msg.data['satellite'] == "NPP" and
-                          msg.data['instrument'] == 'viirs'):
-            LOG.info("Not a Suomi NPP VIIRS scene. Continue...")
+        elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
+                          msg.data['sensor'] == 'viirs'):
+            LOG.info("Not a VIIRS scene. Continue...")
             return True
         elif msg is None:
             return True
@@ -459,8 +463,8 @@ class ViirsSdrProcessor(object):
                                                                SERVERNAME))
             return True
         LOG.info("Ok... " + str(urlobj.netloc))
-        LOG.info("Sat and Instrument: " + str(msg.data['satellite'])
-                 + " " + str(msg.data['instrument']))
+        LOG.info("Sat and Instrument: " + str(msg.data['platform_name'])
+                 + " " + str(msg.data['sensor']))
 
         start_time = msg.data['start_time']
         try:
@@ -512,8 +516,8 @@ class ViirsSdrProcessor(object):
             traceback.print_exc(file=sys.stderr)
 
         if orbnum:
-            self.orbit = orbnum
-        LOG.info("Orbit number = " + str(self.orbit))
+            self.orbit_number = orbnum
+        LOG.info("Orbit number = " + str(self.orbit_number))
 
         self.glist.append(rdr_filename)
 
