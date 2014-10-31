@@ -5,16 +5,17 @@ import re
 
 from pyorbital.orbital import Orbital
 from pyorbital.tlefile import Tle
-from sdr_runner import TLE_DIRS, TLE_FILE_FORMAT
-from sdr_runner import get_npp_stamp
+from npp_runner import TLE_DIRS, TLE_FILE_FORMAT
+from npp_runner import get_npp_stamp
 
 import logging
 LOG = logging.getLogger(__name__)
 
+
 class NoTleFile(Exception):
     pass
 
-TLE_SATNAME = {'npp' : 'SUOMI NPP',}
+TLE_SATNAME = {'npp': 'SUOMI NPP', }
 TBUS_STYLE = False
 
 TLE_BUFFER = {}
@@ -30,8 +31,9 @@ def _get_tle_file(timestamp):
                 if os.path.isfile(fname):
                     LOG.info("Found TLE file: '%s'" % fname)
                     return fname
-    raise NoTleFile("Found no TLE file close in time to " + 
+    raise NoTleFile("Found no TLE file close in time to " +
                     str(timestamp.strftime(TLE_FILE_FORMAT)))
+
 
 def get_tle(platform, timestamp=None):
     stamp = platform + timestamp.strftime('-%Y%m%d%H')
@@ -43,6 +45,8 @@ def get_tle(platform, timestamp=None):
     return tle
 
 _re_replace_orbitno = re.compile("_b(\d{5})")
+
+
 def replace_orbitno(filename):
     stamp = get_npp_stamp(filename)
 
@@ -57,16 +61,16 @@ def replace_orbitno(filename):
             if date_key in obj.attrs.keys():
                 if not good_time_val_[0]:
                     time_val = datetime.strptime(
-                        obj.attrs[date_key][0][0] + 
+                        obj.attrs[date_key][0][0] +
                         obj.attrs[time_key][0][0],
                         '%Y%m%d%H%M%S.%fZ')
                     if abs(time_val - no_date) > epsilon_time:
                         good_time_val_[0] = time_val
-                
+
     def _check_orbitno(name, obj):
         if isinstance(obj, h5py.Dataset):
             for date_key, time_key, orbit_key in (
-                ('AggregateBeginningDate', 'AggregateBeginningTime', 
+                ('AggregateBeginningDate', 'AggregateBeginningTime',
                  'AggregateBeginningOrbitNumber'),
                 ('AggregateEndingDate', 'AggregateEndingTime',
                  'AggregateEndingOrbitNumber'),
@@ -74,14 +78,15 @@ def replace_orbitno(filename):
                  'N_Beginning_Orbit_Number')):
                 if orbit_key in obj.attrs.keys():
                     time_val = datetime.strptime(
-                        obj.attrs[date_key][0][0] + 
+                        obj.attrs[date_key][0][0] +
                         obj.attrs[time_key][0][0],
                         '%Y%m%d%H%M%S.%fZ')
 
                     # Check for no date (1958) problem:
                     if abs(time_val - no_date) < epsilon_time:
-                        LOG.info("Start time wrong: %s" % time_val.strftime('%Y%m%d'))
-                        LOG.info("Will use the first good end time encounter " + 
+                        LOG.info("Start time wrong: %s" %
+                                 time_val.strftime('%Y%m%d'))
+                        LOG.info("Will use the first good end time encounter " +
                                  "in file to determine orbit number")
                         time_val = good_time_val_[0]
 
@@ -94,15 +99,17 @@ def replace_orbitno(filename):
     tle = get_tle(stamp.platform, stamp.start_time)
     orbital_ = Orbital(tle.platform, line1=tle.line1, line2=tle.line2)
     orbit = orbital_.get_orbit_number(stamp.start_time, tbus_style=TBUS_STYLE)
-    LOG.info("Replacing orbit number %05d with %05d" % (stamp.orbit_number, orbit))
+    LOG.info("Replacing orbit number %05d with %05d" %
+             (stamp.orbit_number, orbit))
     fp = h5py.File(filename, 'r+')
     try:
         good_time_val_ = [None]
         fp.visititems(_get_a_good_time)
         counter_ = [0]
-        fp.visititems(_check_orbitno)    
+        fp.visititems(_check_orbitno)
         if counter_[0] == 0:
-            raise IOError("Failed replacing orbit number in hdf5 attributes '%s'" % fname)
+            raise IOError(
+                "Failed replacing orbit number in hdf5 attributes '%s'" % fname)
         LOG.info("Replaced orbit number in %d attributes" % counter_[0])
     finally:
         fp.close()

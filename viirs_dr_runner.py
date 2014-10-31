@@ -31,9 +31,9 @@ import os
 from glob import glob
 from datetime import datetime, timedelta
 
-import sdr_runner
-import sdr_runner.orbitno
-_PACKAGEDIR = sdr_runner.__path__[0]
+import npp_runner
+import npp_runner.orbitno
+_PACKAGEDIR = npp_runner.__path__[0]
 _CONFIG_PATH = os.path.join(os.path.dirname(_PACKAGEDIR), 'etc')
 
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
@@ -73,12 +73,12 @@ import posttroll.subscriber
 from posttroll.publisher import Publish
 from posttroll.message import Message
 
-from sdr_runner import get_datetime_from_filename
-from sdr_runner.post_cspp import (get_sdr_files,
+from npp_runner import get_datetime_from_filename
+from npp_runner.post_cspp import (get_sdr_files,
                                   create_subdirname,
                                   pack_sdr_files, make_okay_files,
                                   cleanup_cspp_workdir)
-from sdr_runner.pre_cspp import fix_rdrfile
+from npp_runner.pre_cspp import fix_rdrfile
 
 #: Default time format
 _DEFAULT_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -504,7 +504,7 @@ class ViirsSdrProcessor(object):
                       str(urlobj.path))
             import traceback
             traceback.print_exc(file=sys.stderr)
-        except sdr_runner.orbitno.NoTleFile:
+        except npp_runner.orbitno.NoTleFile:
             LOG.error('Failed to fix orbit number in RDR file = ' +
                       str(urlobj.path))
             LOG.error('No TLE file...')
@@ -666,6 +666,6 @@ if __name__ == "__main__":
     logging.getLogger('').setLevel(logging.DEBUG)
     logging.getLogger('posttroll').setLevel(logging.INFO)
 
-    LOG = logging.getLogger('npp_sdr_runner')
+    LOG = logging.getLogger('viirs_dr_runner')
 
     npp_rolling_runner()

@@ -1,21 +1,24 @@
 """Scanning the CSPP working directory and cleaning up after CSPP processing
 and move the SDR granules to a destination directory"""
 
-import os, shutil
+import os
+import shutil
 from glob import glob
-from sdr_runner.orbitno import TBUS_STYLE
+from npp_runner.orbitno import TBUS_STYLE
 import logging
 LOG = logging.getLogger(__name__)
+
 
 def cleanup_cspp_workdir(workdir):
     """Clean up the CSPP working dir after processing"""
 
     filelist = glob('%s/*' % workdir)
-    this = [ os.remove(s) for s in filelist if os.path.isfile(s) ]
+    dummy = [os.remove(s) for s in filelist if os.path.isfile(s)]
     filelist = glob('%s/*' % workdir)
-    LOG.info("Number of items left after cleaning working dir = " + str(len(filelist)))
+    LOG.info(
+        "Number of items left after cleaning working dir = " + str(len(filelist)))
     shutil.rmtree(workdir)
-    #os.mkdir(workdir)
+    # os.mkdir(workdir)
     return
 
 
@@ -24,16 +27,17 @@ def get_sdr_files(sdr_dir):
     direct readout swath"""
 
     # VIIRS M-bands + geolocation:
-    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_npp_*.h5')) + 
+    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_npp_*.h5')) +
                    glob(os.path.join(sdr_dir, 'GM??O_npp_*.h5')))
     # VIIRS I-bands + geolocation:
-    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_npp_*.h5')) + 
+    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_npp_*.h5')) +
                    glob(os.path.join(sdr_dir, 'GI??O_npp_*.h5')))
     # VIIRS DNB band + geolocation:
-    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_npp_*.h5')) + 
+    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_npp_*.h5')) +
                  glob(os.path.join(sdr_dir, 'GDNBO_npp_*.h5')))
 
     return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files)
+
 
 def create_subdirname(obstime, with_seconds=False, **kwargs):
     """Generate the pps subdirectory name from the start observation time, ex.:
@@ -42,8 +46,8 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
         orbnum = int(kwargs['orbit'])
     else:
         from pyorbital.orbital import Orbital
-        from sdr_runner import orbitno
-        
+        from npp_runner import orbitno
+
         try:
             tle = orbitno.get_tle('npp', obstime)
             orbital_ = Orbital(tle.platform, line1=tle.line1, line2=tle.line2)
@@ -68,6 +72,7 @@ def make_okay_files(base_dir, subdir_name):
     subprocess.call(['touch', okfile])
     return
 
+
 def pack_sdr_files(sdrfiles, base_dir, subdir):
     """Copy the SDR files to the sub-directory under the pps directory
     structure"""
@@ -87,7 +92,7 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
     return retvl
 
 # --------------------------------
-if __name__ == "__main__":    
+if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
         print "Usage %s <cspp work dir>" % sys.argv[0]
@@ -97,7 +102,7 @@ if __name__ == "__main__":
         CSPP_WRKDIR = sys.argv[1]
 
     rootdir = "/san1/pps/import/PPS_data/source"
-    from sdr_runner import get_datetime_from_filename
+    from npp_runner import get_datetime_from_filename
     FILES = get_sdr_files(CSPP_WRKDIR)
     start_time = get_datetime_from_filename(FILES[0])
 

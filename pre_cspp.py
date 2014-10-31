@@ -1,7 +1,8 @@
 """Fix the RDR files with respect to orbit number. There is a bug in the
 RT-STPS software always giving the orbit number = 1"""
 
-import os, sys
+import os
+import sys
 import h5py
 from datetime import datetime, timedelta
 import numpy as np
@@ -12,18 +13,17 @@ LOG = logging.getLogger(__name__)
 
 TLEDIR = "/data/24/saf/polar_in/tle2"
 
-# ---------------------------------------------------------------------------
+
 def fix_rdrfile(filename):
     import os
-    from sdr_runner.orbitno import replace_orbitno
-    
+    from npp_runner.orbitno import replace_orbitno
+
     newname, orbnum = replace_orbitno(filename)
     os.rename(filename, newname)
 
     return newname, orbnum
 
 
-# ---------------------------------------------------------------------------
 def get_orbitnumbers_to_nppfile(npp_file):
     """Browse the RDR/SDR file and get granule start/end times, and determine
     the correct orbit numbers for those times, to be later corrected in the
@@ -43,32 +43,35 @@ def get_orbitnumbers_to_nppfile(npp_file):
                 try:
                     time_key = 'Aggregate' + begin_end + 'Time'
                     date_key = 'Aggregate' + begin_end + 'Date'
-                    x_date = fobj['/Data_Products'][group][dset].attrs[date_key]
-                    x_time = fobj['/Data_Products'][group][dset].attrs[time_key]
+                    x_date = fobj[
+                        '/Data_Products'][group][dset].attrs[date_key]
+                    x_time = fobj[
+                        '/Data_Products'][group][dset].attrs[time_key]
                     if not start_obstime and begin_end == 'Beginning':
                         # Ex.: '20120405'+'021645'
-                        datetime_str = (x_date[0][0] + 
+                        datetime_str = (x_date[0][0] +
                                         x_time[0][0].split('.')[0])
-                        start_obstime = datetime.strptime(datetime_str, 
+                        start_obstime = datetime.strptime(datetime_str,
                                                           '%Y%m%d%H%M%S')
                     if not end_obstime and begin_end == 'Ending':
                         # Ex.: '20120405'+'021645'
-                        datetime_str = (x_date[0][0] + 
+                        datetime_str = (x_date[0][0] +
                                         x_time[0][0].split('.')[0])
-                        end_obstime = datetime.strptime(datetime_str, 
+                        end_obstime = datetime.strptime(datetime_str,
                                                         '%Y%m%d%H%M%S')
                 except KeyError:
                     time_key = begin_end + '_Time'
                     date_key = begin_end + '_Date'
-                    x_date = fobj['/Data_Products'][group][dset].attrs[date_key]
-                    x_time = fobj['/Data_Products'][group][dset].attrs[time_key]
-                
-                datetime_str = (x_date[0][0] + 
-                                x_time[0][0].split('.')[0])
-                obstimes[group+dset+begin_end] = datetime.strptime(datetime_str, 
-                                                                   '%Y%m%d%H%M%S')
+                    x_date = fobj[
+                        '/Data_Products'][group][dset].attrs[date_key]
+                    x_time = fobj[
+                        '/Data_Products'][group][dset].attrs[time_key]
 
-            
+                datetime_str = (x_date[0][0] +
+                                x_time[0][0].split('.')[0])
+                obstimes[group + dset + begin_end] = datetime.strptime(datetime_str,
+                                                                       '%Y%m%d%H%M%S')
+
     fobj.close()
 
     if not start_obstime and not end_obstime:
@@ -84,16 +87,16 @@ def get_orbitnumbers_to_nppfile(npp_file):
         obstime = end_obstime
     else:
         obstime = start_obstime
-        
+
     datestr = obstime.strftime('%Y%m%d')
     try:
-        sat = orb.Orbital('SUOMI NPP',  
+        sat = orb.Orbital('SUOMI NPP',
                           tle_file=os.path.join(TLEDIR,
                                                 'tle-%s.txt' % datestr)
                           )
     except IOError:
         datestr = (obstime - deltat).strftime('%Y%m%d')
-        sat = orb.Orbital('SUOMI NPP', 
+        sat = orb.Orbital('SUOMI NPP',
                           tle_file=os.path.join(TLEDIR,
                                                 'tle-%s.txt' % datestr)
                           )
@@ -113,12 +116,11 @@ def get_orbitnumbers_to_nppfile(npp_file):
             obstime = obstimes[key]
 
         orbits[key] = sat.get_orbit_number(obstime)
- 
+
     print "Orbit numbers in swath:"
     for key in obstimes:
-        print orbits[key], 
+        print orbits[key],
     print
-
 
     return orbits
 
@@ -133,7 +135,7 @@ def fix_nppfile4orbitnumber(orbits, npp_file, outdir):
     start_orbnum = orbits['start']
     npp_filename = os.path.basename(npp_file)
     new_filename = (npp_filename.split('_b')[0] +
-                    '_b%.5d' % (start_orbnum) + 
+                    '_b%.5d' % (start_orbnum) +
                     npp_filename[npp_filename.find('_c')::])
     outfile = os.path.join(outdir, new_filename)
 
@@ -142,7 +144,6 @@ def fix_nppfile4orbitnumber(orbits, npp_file, outdir):
         return outfile
 
     shutil.copy(npp_file, outfile)
-
 
     # Start browsing file and change the orbit number:
     out = h5py.File(outfile)
@@ -154,17 +155,17 @@ def fix_nppfile4orbitnumber(orbits, npp_file, outdir):
             for key, val in subsubg_attrs.items():
                 if key in ['AggregateBeginningOrbitNumber',
                            'N_Beginning_Orbit_Number']:
-                    start_orbnum = orbits[group+dset+'Beginning']
-                    #print "Change orbit number from 1", start_orbnum
-                    val =  np.array([[start_orbnum]]).astype('uint64')
+                    start_orbnum = orbits[group + dset + 'Beginning']
+                    # print "Change orbit number from 1", start_orbnum
+                    val = np.array([[start_orbnum]]).astype('uint64')
 
                     out['/Data_Products'][group][dset].attrs[key] = val
 
                 if key in ['AggregateEndingOrbitNumber']:
-                    end_orbnum = orbits[group+dset+'Ending']
-                    #print "Change orbit number from 1", end_orbnum
-                    val =  np.array([[end_orbnum]]).astype('uint64')
-                
+                    end_orbnum = orbits[group + dset + 'Ending']
+                    # print "Change orbit number from 1", end_orbnum
+                    val = np.array([[end_orbnum]]).astype('uint64')
+
                     out['/Data_Products'][group][dset].attrs[key] = val
 
     out.close()
@@ -178,17 +179,17 @@ def get_npp_orbit_number(obstime):
     deltat = timedelta(days=1)
     datestr = obstime.strftime('%Y%m%d')
     try:
-        sat = orb.Orbital('SUOMI NPP', 
+        sat = orb.Orbital('SUOMI NPP',
                           tle_file=os.path.join(TLEDIR,
                                                 'tle-%s.txt' % datestr)
                           )
     except IOError:
         datestr = (obstime - deltat).strftime('%Y%m%d')
-        sat = orb.Orbital('SUOMI NPP', 
+        sat = orb.Orbital('SUOMI NPP',
                           tle_file=os.path.join(TLEDIR,
                                                 'tle-%s.txt' % datestr)
                           )
-        
+
     orbit = sat.get_orbit_number(obstime)
 
     return orbit
@@ -201,7 +202,6 @@ if __name__ == "__main__":
     else:
         nppfile = sys.argv[1]
         output_dir = sys.argv[2]
-
 
     orbs = get_orbitnumbers_to_nppfile(nppfile)
     fix_nppfile4orbitnumber(orbs, nppfile, output_dir)
