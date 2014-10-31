@@ -434,7 +434,11 @@ class ViirsSdrProcessor(object):
     def run(self, msg):
         """Start the VIIRS SDR processing using CSPP on one rdr granule"""
 
+        if msg is None:
+            return True
+
         LOG.debug("Received message: " + str(msg))
+
         if self.glist and len(self.glist) > 0:
             LOG.debug("glist: " + str(self.glist))
 
@@ -449,8 +453,6 @@ class ViirsSdrProcessor(object):
         elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
                           msg.data['sensor'] == 'viirs'):
             LOG.info("Not a VIIRS scene. Continue...")
-            return True
-        elif msg is None:
             return True
 
         LOG.debug("")
