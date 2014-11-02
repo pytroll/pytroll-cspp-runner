@@ -435,16 +435,15 @@ class ViirsSdrProcessor(object):
     def run(self, msg):
         """Start the VIIRS SDR processing using CSPP on one rdr granule"""
 
-        if msg is None:
-            return True
-
-        LOG.debug("Received message: " + str(msg))
+        if msg:
+            LOG.debug("Received message: " + str(msg))
 
         if self.glist and len(self.glist) > 0:
             LOG.debug("glist: " + str(self.glist))
 
         if msg is None and self.glist and len(self.glist) > 2:
             # The swath is assumed to be finished now
+            LOG.debug("The swath is assumed to be finished now")
             del self.glist[0]
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
@@ -455,6 +454,8 @@ class ViirsSdrProcessor(object):
         elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
                           msg.data['sensor'] == 'viirs'):
             LOG.info("Not a VIIRS scene. Continue...")
+            return True
+        elif msg is None:
             return True
 
         LOG.debug("")
