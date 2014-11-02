@@ -394,6 +394,7 @@ def spawn_cspp(current_granule, *glist):
                     for new_file in new_result_files
                     if start_str in new_file]
 
+    LOG.info("Number of results files = " + str(len(result_files)))
     return working_dir, result_files
 
 
@@ -449,6 +450,7 @@ class ViirsSdrProcessor(object):
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
                                                            [keeper] + self.glist))
+            LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
                           msg.data['sensor'] == 'viirs'):
