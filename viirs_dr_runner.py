@@ -344,6 +344,8 @@ def get_sdr_times(filename):
 def publish_sdr(publisher, result_files, orbit):
     """Publish the messages that SDR files are ready
     """
+    if not result_files:
+        return
     # Now publish:
     to_send = {}
     to_send["dataset"] = []
