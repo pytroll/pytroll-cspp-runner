@@ -74,7 +74,7 @@ def make_okay_files(base_dir, subdir_name):
 
 
 def pack_sdr_files(sdrfiles, base_dir, subdir):
-    """Copy the SDR files to the sub-directory under the pps directory
+    """Copy the SDR files to the sub-directory under the *subdir* directory
     structure"""
 
     path = os.path.join(base_dir, subdir)

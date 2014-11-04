@@ -30,6 +30,7 @@ processing on direct readout RDR data (granules or full swaths)
 import os
 from glob import glob
 from datetime import datetime, timedelta
+from urlparse import urlunsplit
 
 import npp_runner
 import npp_runner.orbitno
@@ -344,28 +345,34 @@ def publish_sdr(publisher, result_files, orbit):
     """Publish the messages that SDR files are ready
     """
     # Now publish:
-    environment = MODE
+    to_send = {}
+    to_send["dataset"] = []
     for result_file in result_files:
-        filename = os.path.split(result_file)[1]
-        to_send = {}
-        to_send['uri'] = ('ssh://%s/%s' % (SERVERNAME, result_file))
-        to_send['filename'] = filename
-        to_send['sensor'] = 'viirs'
-        to_send['orbit_number'] = orbit
-        to_send['platform_name'] = 'Suomi-NPP'
-        to_send['format'] = 'SDR'
-        to_send['type'] = 'HDF5'
-        to_send['data_processing_level'] = '1'
-        to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
+        filename = os.path.basename(result_file)
+        to_send['dataset'].append({'uri': urlunsplit(('ssh', SERVERNAME,
+                                                      result_file, '', '')),
+                                   'uid': filename})
+    to_send['sensor'] = 'viirs'
+    to_send['orbit_number'] = orbit
+    to_send['platform_name'] = 'Suomi-NPP'
+    to_send['format'] = 'SDR'
+    to_send['type'] = 'HDF5'
+    to_send['data_processing_level'] = '1'
+    to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
 
-        msg = Message('/' + to_send['format'] + '/' +
-                      to_send['data_processing_level'] +
-                      '/norrköping/' + environment + '/polar/direct_readout/',
-                      "file", to_send).encode()
-        # msg = Message('/oper/polar/direct_readout/norrkoping',
-        #              "file", to_send).encode()
-        LOG.debug("sending: " + str(msg))
-        publisher.send(msg)
+    msg = Message('/'.join(('',
+                            'segment',
+                            to_send['format'],
+                            to_send['data_processing_level'],
+                            'norrköping',
+                            MODE,
+                            'polar',
+                            'direct_readout')),
+                  "dataset", to_send).encode()
+    # msg = Message('/oper/polar/direct_readout/norrkoping',
+    #              "file", to_send).encode()
+    LOG.debug("sending: " + str(msg))
+    publisher.send(msg)
 
 
 def spawn_cspp(current_granule, *glist):
@@ -414,7 +421,6 @@ class ViirsSdrProcessor(object):
         self.platform_name = 'unknown'  # Ex.: Suomi-NPP
         self.fullswath = False
         self.cspp_results = []
-        self.working_dirs = []
         self.glist = []
         self.pass_start_time = None
         self.result_files = []
@@ -424,7 +430,6 @@ class ViirsSdrProcessor(object):
         """Initialise the processor"""
         self.fullswath = False
         self.cspp_results = []
-        self.working_dirs = []
         self.glist = []
         self.pass_start_time = None
         self.result_files = []
@@ -606,26 +611,25 @@ def npp_rolling_runner():
                     if not status:
                         break  # end the loop and reinitialize !
 
-                LOG.info("Get the results from the multiptocessing pool-run")
-                for res in viirs_proc.cspp_results:
-                    working_dir, tmp_result_files = res.get()
-                    viirs_proc.working_dirs.append(working_dir)
-                    viirs_proc.result_files.extend(tmp_result_files)
-
                 tobj = viirs_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
                 subd = create_subdirname(tobj, orbit=viirs_proc.orbit_number)
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
-                sdr_files = viirs_proc.pack_sdr_files(subd)
-                make_okay_files(viirs_proc.sdr_home, subd)
 
-                publish_sdr(publisher, sdr_files,
-                            viirs_proc.orbit_number)
-
-                for working_dir in viirs_proc.working_dirs:
+                LOG.info("Get the results from the multiptocessing pool-run")
+                for res in viirs_proc.cspp_results:
+                    working_dir, tmp_result_files = res.get()
+                    # viirs_proc.working_dirs.append(working_dir)
+                    # viirs_proc.result_files.extend(tmp_result_files)
+                    viirs_proc.result_files = tmp_result_files
+                    sdr_files = viirs_proc.pack_sdr_files(subd)
                     LOG.info("Cleaning up directory %s" % working_dir)
                     cleanup_cspp_workdir(working_dir)
+                    publish_sdr(publisher, sdr_files,
+                                viirs_proc.orbit_number)
+
+                make_okay_files(viirs_proc.sdr_home, subd)
 
                 LOG.info("Now that SDR processing has completed, " +
                          "check for new LUT files...")
