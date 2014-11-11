@@ -605,7 +605,7 @@ def npp_rolling_runner():
 
     with posttroll.subscriber.Subscribe('receiver',
                                         ['RDR', ], True) as subscr:
-        with Publish('npp_dr_runner', 0) as publisher:
+        with Publish('viirs_dr_runner', 0) as publisher:
             while True:
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=90):
