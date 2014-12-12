@@ -649,6 +649,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     CONF = ConfigParser.ConfigParser()
+
+    print "Read config from", args.config_file
+
     CONF.read(args.config_file)
 
     OPTIONS = {}
