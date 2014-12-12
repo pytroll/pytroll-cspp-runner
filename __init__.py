@@ -31,40 +31,8 @@ import ConfigParser
 import logging
 LOG = logging.getLogger(__name__)
 
-_RE_NPP_STAMP = re.compile('.*?(([A-Za-z0-9]+)_d(\d+)_t(\d+)_e(\d+)_b(\d+)).*')
-
-import npp_runner
-_PACKAGEDIR = npp_runner.__path__[0]
-_CONFIG_PATH = os.path.join(os.path.dirname(_PACKAGEDIR), 'etc')
-
-# try:
-#    CONFIG_PATH = os.environ['NPP_SDRPROC_CONFIG_DIR']
-# except KeyError:
-#    LOG.error('NPP_SDRPROC_CONFIG_DIR is not defined')
-#    raise
-
-#
-# Read config file (SITE and DOMAIN)
-#
-CONFIG_PATH = os.environ.get('NPP_SDRPROC_CONFIG_DIR', _CONFIG_PATH)
-print "CONFIG_PATH: ", CONFIG_PATH
-
-CONF = ConfigParser.ConfigParser()
-CONF.read(os.path.join(CONFIG_PATH, "viirs_dr_config.cfg"))
-
-MODE = os.getenv("SMHI_MODE")
-if MODE is None:
-    MODE = "offline"
-
-OPTIONS = {}
-for option, value in CONF.items(MODE, raw=True):
-    OPTIONS[option] = value
-
-
-SITE = eval(CONF.get(MODE, 'site'))
-DOMAIN = eval(CONF.get(MODE, 'domain'))
-TLE_DIRS = eval(CONF.get(MODE, 'tle_dirs'))
-TLE_FILE_FORMAT = eval(CONF.get(MODE, 'tle_file_format'))
+_RE_NPP_STAMP = re.compile(
+    r'.*?(([A-Za-z0-9]+)_d(\d+)_t(\d+)_e(\d+)_b(\d+)).*')
 
 
 class NPPStamp(object):

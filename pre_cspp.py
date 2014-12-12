@@ -11,11 +11,8 @@ import pyorbital.orbital as orb
 import logging
 LOG = logging.getLogger(__name__)
 
-TLEDIR = "/data/24/saf/polar_in/tle2"
-
 
 def fix_rdrfile(filename):
-    import os
     from npp_runner.orbitno import replace_orbitno
 
     newname, orbnum = replace_orbitno(filename)
@@ -28,8 +25,6 @@ def get_orbitnumbers_to_nppfile(npp_file):
     """Browse the RDR/SDR file and get granule start/end times, and determine
     the correct orbit numbers for those times, to be later corrected in the
     file."""
-    deltat = timedelta(days=1)
-
     fobj = h5py.File(npp_file, 'r')
 
     # First get all start and end date/time of the granules:
@@ -88,18 +83,7 @@ def get_orbitnumbers_to_nppfile(npp_file):
     else:
         obstime = start_obstime
 
-    datestr = obstime.strftime('%Y%m%d')
-    try:
-        sat = orb.Orbital('SUOMI NPP',
-                          tle_file=os.path.join(TLEDIR,
-                                                'tle-%s.txt' % datestr)
-                          )
-    except IOError:
-        datestr = (obstime - deltat).strftime('%Y%m%d')
-        sat = orb.Orbital('SUOMI NPP',
-                          tle_file=os.path.join(TLEDIR,
-                                                'tle-%s.txt' % datestr)
-                          )
+    sat = orb.Orbital('SUOMI NPP')
 
     # Get the start orbit number:
     orbits = {}
@@ -176,23 +160,10 @@ def get_npp_orbit_number(obstime):
     """Get the orbit number for the Suomi NPP RDR/SDR file given the
     observation start time. The orbit number"""
 
-    deltat = timedelta(days=1)
-    datestr = obstime.strftime('%Y%m%d')
-    try:
-        sat = orb.Orbital('SUOMI NPP',
-                          tle_file=os.path.join(TLEDIR,
-                                                'tle-%s.txt' % datestr)
-                          )
-    except IOError:
-        datestr = (obstime - deltat).strftime('%Y%m%d')
-        sat = orb.Orbital('SUOMI NPP',
-                          tle_file=os.path.join(TLEDIR,
-                                                'tle-%s.txt' % datestr)
-                          )
+    sat = orb.Orbital('SUOMI NPP')
 
-    orbit = sat.get_orbit_number(obstime)
+    return sat.get_orbit_number(obstime)
 
-    return orbit
 
 # -------------------------
 if __name__ == "__main__":
