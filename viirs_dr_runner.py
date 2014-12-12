@@ -34,40 +34,15 @@ from urlparse import urlunsplit
 
 import npp_runner
 import npp_runner.orbitno
-_PACKAGEDIR = npp_runner.__path__[0]
-_CONFIG_PATH = os.path.join(os.path.dirname(_PACKAGEDIR), 'etc')
 
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
 CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/luts')
 CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
-import ConfigParser
-CONFIG_PATH = os.environ.get('NPP_SDRPROC_CONFIG_DIR', _CONFIG_PATH)
-print "CONFIG_PATH: ", CONFIG_PATH
-
-CONF = ConfigParser.ConfigParser()
-CONF.read(os.path.join(CONFIG_PATH, "viirs_dr_config.cfg"))
-
 MODE = os.getenv("SMHI_MODE")
 if MODE is None:
     MODE = "dev"
-
-OPTIONS = {}
-for option, value in CONF.items(MODE, raw=True):
-    OPTIONS[option] = value
-
-LEVEL1_PUBLISH_PORT = 9020
-SERVERNAME = OPTIONS['servername']
-
-THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
-URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
-URL_JPSS_REMOTE_ANC_DIR = OPTIONS['url_jpss_remote_anc_dir']
-LUT_DIR = OPTIONS.get('lut_dir', CSPP_RT_SDR_LUTS)
-LUT_UPDATE_STAMPFILE_RPEFIX = OPTIONS['lut_update_stampfile_prefix']
-ANC_UPDATE_STAMPFILE_RPEFIX = OPTIONS['anc_update_stampfile_prefix']
-URL_DOWNLOAD_TRIAL_FREQUENCY_HOURS = OPTIONS[
-    'url_download_trial_frequency_hours']
 
 VIIRS_SATELLITES = ['Suomi-NPP', 'JPSS-1', 'JPSS-2']
 
@@ -656,12 +631,46 @@ def npp_rolling_runner():
 if __name__ == "__main__":
 
     from logging import handlers
+    import argparse
+    import ConfigParser
 
-    if _NPP_SDRPROC_LOG_FILE:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config-file",
+                        required=True,
+                        dest="config_file",
+                        type=str,
+                        default=None,
+                        help="The file containing configuration parameters.")
+    parser.add_argument("-l", "--log-file", dest="log",
+                        type=str,
+                        default=None,
+                        help="The file to log to (stdout per default).")
+
+    args = parser.parse_args()
+
+    CONF = ConfigParser.ConfigParser()
+    CONF.read(args.config_file)
+
+    OPTIONS = {}
+    for option, value in CONF.items(MODE, raw=True):
+        OPTIONS[option] = value
+
+    SERVERNAME = OPTIONS['servername']
+
+    THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
+    URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
+    URL_JPSS_REMOTE_ANC_DIR = OPTIONS['url_jpss_remote_anc_dir']
+    LUT_DIR = OPTIONS.get('lut_dir', CSPP_RT_SDR_LUTS)
+    LUT_UPDATE_STAMPFILE_RPEFIX = OPTIONS['lut_update_stampfile_prefix']
+    ANC_UPDATE_STAMPFILE_RPEFIX = OPTIONS['anc_update_stampfile_prefix']
+    URL_DOWNLOAD_TRIAL_FREQUENCY_HOURS = OPTIONS[
+        'url_download_trial_frequency_hours']
+
+    if args.log is not None:
         # handler = logging.FileHandler(_NPP_SDRPROC_LOG_FILE)
-        ndays = int(OPTIONS["log_rotation_days"])
-        ncount = int(OPTIONS["log_rotation_backup"])
-        handler = handlers.TimedRotatingFileHandler(_NPP_SDRPROC_LOG_FILE,
+        ndays = int(OPTIONS.get("log_rotation_days", 1))
+        ncount = int(OPTIONS.get("log_rotation_backup", 7))
+        handler = handlers.TimedRotatingFileHandler(args.log,
                                                     when='midnight',
                                                     interval=ndays,
                                                     backupCount=ncount,
