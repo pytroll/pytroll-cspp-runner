@@ -1,11 +1,8 @@
 import os
-import sys
 from datetime import datetime, timedelta
 import re
 
 from pyorbital.orbital import Orbital
-from pyorbital.tlefile import Tle
-from npp_runner import TLE_DIRS, TLE_FILE_FORMAT
 from npp_runner import get_npp_stamp
 
 import logging
@@ -18,33 +15,7 @@ class NoTleFile(Exception):
 TLE_SATNAME = {'npp': 'SUOMI NPP', }
 TBUS_STYLE = False
 
-TLE_BUFFER = {}
-
-
-def _get_tle_file(timestamp):
-    # Find a not too old TLE file
-    for path in TLE_DIRS:
-        if os.path.isdir(path):
-            for i in range(-2, 5):
-                tobj = timestamp - timedelta(days=i)
-                fname = os.path.join(path, tobj.strftime(TLE_FILE_FORMAT))
-                if os.path.isfile(fname):
-                    LOG.info("Found TLE file: '%s'" % fname)
-                    return fname
-    raise NoTleFile("Found no TLE file close in time to " +
-                    str(timestamp.strftime(TLE_FILE_FORMAT)))
-
-
-def get_tle(platform, timestamp=None):
-    stamp = platform + timestamp.strftime('-%Y%m%d%H')
-    try:
-        tle = TLE_BUFFER[stamp]
-    except KeyError:
-        tle = Tle(TLE_SATNAME[platform], _get_tle_file(timestamp))
-        TLE_BUFFER[stamp] = tle
-    return tle
-
-_re_replace_orbitno = re.compile("_b(\d{5})")
+_re_replace_orbitno = re.compile(r"_b(\d{5})")
 
 
 def replace_orbitno(filename):
@@ -56,6 +27,7 @@ def replace_orbitno(filename):
     import h5py
 
     def _get_a_good_time(name, obj):
+        del name
         if isinstance(obj, h5py.Dataset):
             date_key, time_key = ('Ending_Date', 'Ending_Time')
             if date_key in obj.attrs.keys():
@@ -68,6 +40,7 @@ def replace_orbitno(filename):
                         good_time_val_[0] = time_val
 
     def _check_orbitno(name, obj):
+        del name
         if isinstance(obj, h5py.Dataset):
             for date_key, time_key, orbit_key in (
                 ('AggregateBeginningDate', 'AggregateBeginningTime',
@@ -84,7 +57,7 @@ def replace_orbitno(filename):
 
                     # Check for no date (1958) problem:
                     if abs(time_val - no_date) < epsilon_time:
-                        LOG.info("Start time wrong: %s" %
+                        LOG.info("Start time wrong: %s",
                                  time_val.strftime('%Y%m%d'))
                         LOG.info("Will use the first good end time encounter " +
                                  "in file to determine orbit number")
@@ -96,11 +69,10 @@ def replace_orbitno(filename):
                     counter_[0] += 1
 
     # Correct h5 attributes
-    tle = get_tle(stamp.platform, stamp.start_time)
-    orbital_ = Orbital(tle.platform, line1=tle.line1, line2=tle.line2)
+    orbital_ = Orbital(TLE_SATNAME[stamp.platform])
     orbit = orbital_.get_orbit_number(stamp.start_time, tbus_style=TBUS_STYLE)
-    LOG.info("Replacing orbit number %05d with %05d" %
-             (stamp.orbit_number, orbit))
+    LOG.info("Replacing orbit number %05d with %05d",
+             stamp.orbit_number, orbit)
     fp = h5py.File(filename, 'r+')
     try:
         good_time_val_ = [None]
@@ -109,8 +81,8 @@ def replace_orbitno(filename):
         fp.visititems(_check_orbitno)
         if counter_[0] == 0:
             raise IOError(
-                "Failed replacing orbit number in hdf5 attributes '%s'" % fname)
-        LOG.info("Replaced orbit number in %d attributes" % counter_[0])
+                "Failed replacing orbit number in hdf5 attributes '%s'" % filename)
+        LOG.info("Replaced orbit number in %d attributes", counter_[0])
     finally:
         fp.close()
 
