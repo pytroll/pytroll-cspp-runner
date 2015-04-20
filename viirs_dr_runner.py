@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014 Adam.Dybbroe
+# Copyright (c) 2013, 2014, 2015
 
 # Author(s):
 
 #   Adam.Dybbroe <a000680@c14526.ad.smhi.se>
+#   Martin.Raspaud <martin.raspaud@smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +32,8 @@ import os
 from glob import glob
 from datetime import datetime, timedelta
 from urlparse import urlunsplit
+import socket
+import netifaces
 
 import npp_runner
 import npp_runner.orbitno
@@ -326,7 +329,7 @@ def publish_sdr(publisher, result_files, orbit):
     to_send["dataset"] = []
     for result_file in result_files:
         filename = os.path.basename(result_file)
-        to_send['dataset'].append({'uri': urlunsplit(('ssh', SERVERNAME,
+        to_send['dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
                                                       result_file, '', '')),
                                    'uid': filename})
     to_send['sensor'] = 'viirs'
@@ -380,6 +383,17 @@ def spawn_cspp(current_granule, *glist):
 
     LOG.info("Number of results files = " + str(len(result_files)))
     return working_dir, result_files
+
+
+def get_local_ips():
+    inet_addrs = [netifaces.ifaddresses(iface).get(netifaces.AF_INET)
+                  for iface in netifaces.interfaces()]
+    ips = []
+    for addr in inet_addrs:
+        if addr is not None:
+            for add in addr:
+                ips.append(add['addr'])
+    return ips
 
 
 class ViirsSdrProcessor(object):
@@ -445,9 +459,10 @@ class ViirsSdrProcessor(object):
         LOG.debug(str(msg))
         urlobj = urlparse(msg.data['uri'])
         LOG.debug("Server = " + str(urlobj.netloc))
-        if urlobj.netloc != SERVERNAME:
+        url_ip = socket.gethostbyname(urlobj.netloc)
+        if url_ip not in get_local_ips():
             LOG.warning("Server %s not the current one: %s" % (str(urlobj.netloc),
-                                                               SERVERNAME))
+                                                               socket.gethostname()))
             return True
         LOG.info("Ok... " + str(urlobj.netloc))
         LOG.info("Sat and Instrument: " + str(msg.data['platform_name'])
@@ -657,8 +672,6 @@ if __name__ == "__main__":
     OPTIONS = {}
     for option, value in CONF.items(MODE, raw=True):
         OPTIONS[option] = value
-
-    SERVERNAME = OPTIONS['servername']
 
     THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
     URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
