@@ -337,7 +337,7 @@ def publish_sdr(publisher, result_files, orbit):
     to_send['platform_name'] = 'Suomi-NPP'
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
-    to_send['data_processing_level'] = '1b'
+    to_send['data_processing_level'] = '1B'
     to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
 
     msg = Message('/'.join(('',
