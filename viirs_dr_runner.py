@@ -255,8 +255,6 @@ def update_ancillary_files():
 
     return
 
-# ---------------------------------------------------------------------------
-
 
 def run_cspp(*viirs_rdr_files):
     """Run CSPP on VIIRS RDR files"""
@@ -562,8 +560,6 @@ class ViirsSdrProcessor(object):
             return False
 
         return True
-
-# ---------------------------------------------------------------------------
 
 
 def npp_rolling_runner():
