@@ -26,7 +26,6 @@
 import os
 from datetime import datetime, timedelta
 import re
-import ConfigParser
 
 import logging
 LOG = logging.getLogger(__name__)
