@@ -414,6 +414,7 @@ class ViirsSdrProcessor(object):
         self.pass_start_time = None
         self.result_files = []
         self.sdr_home = OPTIONS['level1_home']
+        self.message = None
 
     def initialise(self):
         """Initialise the processor"""
@@ -431,6 +432,8 @@ class ViirsSdrProcessor(object):
 
         if msg:
             LOG.debug("Received message: " + str(msg))
+
+        self.message = msg
 
         if self.glist and len(self.glist) > 0:
             LOG.debug("glist: " + str(self.glist))
@@ -615,7 +618,8 @@ def npp_rolling_runner():
                     LOG.info("Cleaning up directory %s" % working_dir)
                     cleanup_cspp_workdir(working_dir)
                     publish_sdr(publisher, sdr_files,
-                                viirs_proc.orbit_number, msg.data)
+                                viirs_proc.orbit_number,
+                                viirs_proc.message.data)
 
                 make_okay_files(viirs_proc.sdr_home, subd)
 
