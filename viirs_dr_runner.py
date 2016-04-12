@@ -317,22 +317,24 @@ def get_sdr_times(filename):
     return start_time, end_time
 
 
-def publish_sdr(publisher, result_files, orbit, mda):
+def publish_sdr(publisher, result_files, mda, **kwargs):
     """Publish the messages that SDR files are ready
     """
     if not result_files:
         return
+
     # Now publish:
     to_send = mda.copy()
+    if 'orbit' in kwargs:
+        to_send["orig_orbit_number"] = to_send["orbit_number"]
+        to_send["orbit_number"] = kwargs['orbit']
+
     to_send["dataset"] = []
     for result_file in result_files:
         filename = os.path.basename(result_file)
         to_send['dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
                                                       result_file, '', '')),
                                    'uid': filename})
-    #to_send['sensor'] = 'viirs'
-    #to_send['orbit_number'] = orbit
-    #to_send['platform_name'] = 'Suomi-NPP'
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
@@ -619,8 +621,8 @@ def npp_rolling_runner():
                     LOG.info("Cleaning up directory %s" % working_dir)
                     cleanup_cspp_workdir(working_dir)
                     publish_sdr(publisher, sdr_files,
-                                viirs_proc.orbit_number,
-                                viirs_proc.message_data)
+                                viirs_proc.message_data,
+                                orbit=viirs_proc.orbit_number)
 
                 make_okay_files(viirs_proc.sdr_home, subd)
 
