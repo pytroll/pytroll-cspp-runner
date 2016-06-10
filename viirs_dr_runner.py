@@ -339,12 +339,15 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
     to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
+    site = SITE
 
+    LOG.debug('Site = %s', SITE)
+    LOG.debug('Publish topic = %s', PUBLISH_TOPIC)
     msg = Message('/'.join(('',
-                            'segment',
+                            PUBLISH_TOPIC,
                             to_send['format'],
                             to_send['data_processing_level'],
-                            'norrköping',
+                            site,
                             MODE,
                             'polar',
                             'direct_readout')),
@@ -593,8 +596,10 @@ def npp_rolling_runner():
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
     viirs_proc = ViirsSdrProcessor(ncpus)
 
+    LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     with posttroll.subscriber.Subscribe('',
-                                        ['RDR', ], True) as subscr:
+                                        SUBSCRIBE_TOPICS, True) as subscr:
+                                        #['RDR', ], True) as subscr:
         with Publish('viirs_dr_runner', 0) as publisher:
             while True:
                 viirs_proc.initialise()
@@ -675,6 +680,10 @@ if __name__ == "__main__":
     OPTIONS = {}
     for option, value in CONF.items(MODE, raw=True):
         OPTIONS[option] = value
+
+    PUBLISH_TOPIC = OPTIONS.get('publish_topic')
+    SUBSCRIBE_TOPICS = OPTIONS.get('subscribe_topics').split(',')
+    SITE = OPTIONS.get('site')
 
     THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
     URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
