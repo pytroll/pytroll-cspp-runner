@@ -451,6 +451,9 @@ class ViirsSdrProcessor(object):
                                                            [keeper] + self.glist))
             LOG.debug("Inside run: Return with a False...")
             return False
+        elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
+            LOG.info("No platform_name or sensor in message. Continue...")
+            return True
         elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
                           msg.data['sensor'] == 'viirs'):
             LOG.info("Not a VIIRS scene. Continue...")
