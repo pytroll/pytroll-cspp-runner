@@ -452,7 +452,7 @@ class ViirsSdrProcessor(object):
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
-            LOG.info("No platform_name or sensor in message. Continue...")
+            LOG.debug("No platform_name or sensor in message. Continue...")
             return True
         elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
                           msg.data['sensor'] == 'viirs'):
@@ -686,6 +686,10 @@ if __name__ == "__main__":
 
     PUBLISH_TOPIC = OPTIONS.get('publish_topic')
     SUBSCRIBE_TOPICS = OPTIONS.get('subscribe_topics').split(',')
+    for item in SUBSCRIBE_TOPICS:
+        if len(item) == 0:
+            SUBSCRIBE_TOPICS.remove(item)
+
     SITE = OPTIONS.get('site')
 
     THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
