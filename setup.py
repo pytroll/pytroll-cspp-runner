@@ -46,5 +46,5 @@ setup(name="cspp_runner",
       zip_safe=False,
       install_requires=['posttroll', ],
       # test_requires=['mock'],
-      # test_suite='aapp_runner.tests.suite',
+      # test_suite='cspp_runner.tests.suite',
       )
