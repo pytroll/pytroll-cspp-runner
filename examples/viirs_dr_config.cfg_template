@@ -1,0 +1,124 @@
+[offline]
+domain = 'dev'
+servername = safe.smhi.se
+site = 'nrk'
+
+tle_dirs = ['/datadb/sat/orbit/tle', '/net/prodsat/datadb/sat/orbit/tle']
+tle_file_format = 'tle_%Y%m%d.txt'
+
+
+level0_home = /san1/polar_in/direct_readout/npp
+level1_home = /san1/polar_out/direct_readout/viirs/sdr
+
+filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+
+working_dir = /san1/wrk_cspp
+
+# CSPP-viirs batch script and parameters:
+#viirs_sdr_call = ["viirs_sdr.sh", "-z"]
+viirs_sdr_call = viirs_sdr.sh
+
+ncpus = 2
+
+[utv]
+
+site = 'nrk'
+domain = 'dev'
+servername = safe.smhi.se
+
+tle_dirs = ['/data/24/saf/polar_in/tle2', '/data/24/saf/polar_in/tle']
+tle_file_format = 'tle-%Y%m%d.txt'
+
+level0_home = /san1/polar_in/direct_readout/npp/lvl0
+level1_home = /san1/pps/import/PPS_data/source
+
+filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+
+working_dir = /san1/cspp/work
+viirs_sdr_call = viirs_sdr.sh
+mirror_jpss_luts = mirror_jpss_luts.bash
+mirror_jpss_ancillary = mirror_jpss_sdr_ancillary.bash
+#viirs_sdr_options = ['-p 1']
+viirs_sdr_options = ['-p 1', '-l']
+
+url_jpss_remote_lut_dir = http://jpssdb.ssec.wisc.edu/ancillary/LUTS_V_1_5/
+url_jpss_remote_anc_dir = http://jpssdb.ssec.wisc.edu/ancillary/
+lut_dir = /local_disk/opt/CSPP/SDR_1_5/anc/cache/luts
+lut_update_stampfile_prefix = /local_disk/opt/CSPP/SDR_1_5/anc/static/lut_update
+anc_update_stampfile_prefix = /local_disk/opt/CSPP/SDR_1_5/anc/static/anc_update
+url_download_trial_frequency_hours = 24
+threshold_lut_files_age_days = 7
+
+log_rotation_days = 1
+log_rotation_backup = 10
+
+ncpus = 8
+
+[test]
+domain = 'test'
+servername = pps2.smhi.se
+site = 'nrk'
+
+tle_dirs = ['/data/24/saf/polar_in/tle2', '/data/24/saf/polar_in/tle']
+tle_file_format = 'tle-%Y%m%d.txt'
+
+level0_home = /san1/polar_in/direct_readout/npp/lvl0
+level1_home = /san1/pps/import/PPS_data/source
+
+filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+
+working_dir = /san1/cspp/work
+mirror_jpss_luts = mirror_jpss_luts.bash
+mirror_jpss_ancillary = mirror_jpss_sdr_ancillary.bash
+viirs_sdr_call = viirs_sdr.sh
+viirs_sdr_options = ['-p 1', '-l']
+
+url_jpss_remote_lut_dir = http://jpssdb.ssec.wisc.edu/ancillary/LUTS_V_1_5/
+url_jpss_remote_anc_dir = http://jpssdb.ssec.wisc.edu/ancillary/
+lut_dir = /local_disk/opt/CSPP/current/anc/cache/luts
+lut_update_stampfile_prefix = /local_disk/opt/CSPP/current/anc/static/lut_update
+anc_update_stampfile_prefix = /local_disk/opt/CSPP/current/anc/static/anc_update
+url_download_trial_frequency_hours = 24
+threshold_lut_files_age_days = 7
+
+log_rotation_days = 1
+log_rotation_backup = 10
+
+ncpus = 8
+
+[prod]
+domain = 'prod'
+servername = pps.smhi.se
+site = 'nrk'
+
+tle_dirs = ['/data/24/saf/polar_in/tle2', '/data/24/saf/polar_in/tle']
+tle_file_format = 'tle-%Y%m%d.txt'
+
+level0_home = /san1/polar_in/direct_readout/npp/lvl0
+level1_home = /san1/pps/import/PPS_data/source
+
+filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
+
+working_dir = /san1/cspp/work
+mirror_jpss_luts = mirror_jpss_luts.bash
+mirror_jpss_ancillary = mirror_jpss_sdr_ancillary.bash
+viirs_sdr_call = viirs_sdr.sh
+viirs_sdr_options = ['-p 1', '-l']
+
+url_jpss_remote_lut_dir = http://jpssdb.ssec.wisc.edu/ancillary/LUTS_V_1_5/
+url_jpss_remote_anc_dir = http://jpssdb.ssec.wisc.edu/ancillary/
+lut_dir = /local_disk/opt/CSPP/current/anc/cache/luts
+lut_update_stampfile_prefix = /local_disk/opt/CSPP/current/anc/static/lut_update
+anc_update_stampfile_prefix = /local_disk/opt/CSPP/current/anc/static/anc_update
+
+url_download_trial_frequency_hours = 24
+threshold_lut_files_age_days = 7
+
+log_rotation_days = 1
+log_rotation_backup = 10
+
+ncpus = 8
