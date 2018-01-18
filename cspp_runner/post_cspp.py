@@ -86,7 +86,14 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
     for sdrfile in sdrfiles:
         newfilename = os.path.join(path, os.path.basename(sdrfile))
         LOG.info("Copy sdrfile to destination: " + newfilename)
+        if os.path.exist(sdrfile):
+            LOG.info("File to copy: {file} <> ST_MTIME={time}".format(file=str(sdrfile),
+                                                                      time=datetime.utcfromtimestamp(os.stat(sdrfile)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
         shutil.copy(sdrfile, newfilename)
+        if os.path.exist(newfilename):
+            LOG.info("File at destination: {file} <> ST_MTIME={time}".format(file=str(newfilename),
+                                                                             time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
+
         retvl.append(newfilename)
 
     return retvl
