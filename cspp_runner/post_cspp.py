@@ -2,6 +2,8 @@
 and move the SDR granules to a destination directory"""
 
 import os
+import stat
+import datetime
 import shutil
 from glob import glob
 from cspp_runner.orbitno import TBUS_STYLE
