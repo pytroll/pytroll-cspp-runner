@@ -456,7 +456,7 @@ class ViirsSdrProcessor(object):
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                           [arges=(keeper] + self.glist,),
+                                                           args=([keeper] + self.glist,),
                                                            kwds={'start_time': msg.data['start_time']}))
             LOG.debug("Inside run: Return with a False...")
             return False
