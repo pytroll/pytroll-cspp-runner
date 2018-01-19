@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 Adam.Dybbroe
+# Copyright (c) 2014, 2018 Adam.Dybbroe
 
 # Author(s):
 
@@ -89,5 +89,5 @@ def get_datetime_from_filename(filename):
 
     bname = os.path.basename(filename)
     sll = bname.split('_')
-    return datetime.strptime(sll[2] + sll[3][:-1],
-                             "d%Y%m%dt%H%M%S")
+    # return datetime.strptime(sll[2] + sll[3][:-1], "d%Y%m%dt%H%M%S")
+    return datetime.strptime(sll[2] + sll[3][:-3], "d%Y%m%dt%H%M")

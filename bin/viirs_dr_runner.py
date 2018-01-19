@@ -363,6 +363,7 @@ def spawn_cspp(current_granule, *glist, **kwargs):
     """Spawn a CSPP run on the set of RDR files given"""
 
     start_time = kwargs.get('start_time')
+
     LOG.info("Start CSPP: RDR files = " + str(glist))
     working_dir = run_cspp(*glist)
     LOG.info("CSPP SDR processing finished...")
@@ -385,8 +386,9 @@ def spawn_cspp(current_granule, *glist, **kwargs):
         LOG.info("Start time of current granule (from messages): %s", start_time.strftime('%Y-%m-%d %H:%M'))
 
     start_time = get_datetime_from_filename(current_granule)
-    LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M'))
-    start_str = start_time.strftime("d%Y%m%d_t%H%M%S")
+    LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:'))
+    #start_str = start_time.strftime("d%Y%m%d_t%H%M%S")
+    start_str = start_time.strftime("d%Y%m%d_t%H%M")
     LOG.info("Start file string with obs time of current granule: %s", start_str)
     result_files = [new_file
                     for new_file in new_result_files
@@ -572,9 +574,9 @@ class ViirsSdrProcessor(object):
 
         LOG.info("Before call to spawn_cspp. Argument list = " +
                  str([keeper] + self.glist))
+        LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       [keeper] + self.glist,
-                                                       kwds={'start_time': msg.data.get('start_time')}))
+                                                       [keeper] + self.glist))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
