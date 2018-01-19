@@ -456,8 +456,8 @@ class ViirsSdrProcessor(object):
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                           [keeper] + self.glist,
-                                                           start_time=msg.data['start_time']))
+                                                           [arges=(keeper] + self.glist,),
+                                                           kwds={'start_time': msg.data['start_time']}))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
@@ -574,7 +574,8 @@ class ViirsSdrProcessor(object):
         LOG.info("Before call to spawn_cspp. Argument list = " +
                  str([keeper] + self.glist))
         self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       [keeper] + self.glist, start_time=start_time))
+                                                       args=([keeper] + self.glist, ),
+                                                       kwds={'start_time': start_time}))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
