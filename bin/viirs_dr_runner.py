@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016
+# Copyright (c) 2013, 2014, 2015, 2016, 2018
 
 # Author(s):
 
@@ -359,14 +359,16 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     publisher.send(msg)
 
 
-def spawn_cspp(current_granule, *glist):
+def spawn_cspp(current_granule, *glist, **kwargs):
     """Spawn a CSPP run on the set of RDR files given"""
 
+    start_time = kwargs.get('start_time')
     LOG.info("Start CSPP: RDR files = " + str(glist))
     working_dir = run_cspp(*glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
     new_result_files = get_sdr_files(working_dir)
+    LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
     if len(new_result_files) == 0:
         LOG.warning("No SDR files available. CSPP probably failed!")
         return working_dir, []
@@ -379,8 +381,13 @@ def spawn_cspp(current_granule, *glist):
         return working_dir, new_result_files
 
     # Only bother about the "current granule" - skip the rest
+    if start_time:
+        LOG.info("Start time of current granule (from messages): %s", start_time.strftime('%Y-%m-%d %H:%M'))
+
     start_time = get_datetime_from_filename(current_granule)
+    LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M'))
     start_str = start_time.strftime("d%Y%m%d_t%H%M%S")
+    LOG.info("Start file string with obs time of current granule: %s", start_str)
     result_files = [new_file
                     for new_file in new_result_files
                     if start_str in new_file]
@@ -449,7 +456,8 @@ class ViirsSdrProcessor(object):
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                           [keeper] + self.glist))
+                                                           [keeper] + self.glist,
+                                                           start_time=msg.data['start_time']))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
@@ -566,7 +574,7 @@ class ViirsSdrProcessor(object):
         LOG.info("Before call to spawn_cspp. Argument list = " +
                  str([keeper] + self.glist))
         self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       [keeper] + self.glist))
+                                                       [keeper] + self.glist, start_time=start_time))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
