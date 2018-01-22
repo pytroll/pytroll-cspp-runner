@@ -54,7 +54,7 @@ import posttroll.subscriber
 from posttroll.publisher import Publish
 from posttroll.message import Message
 
-from cspp_runner import get_datetime_from_filename
+from cspp_runner import (get_datetime_from_filename, is_same_granule)
 from cspp_runner.post_cspp import (get_sdr_files,
                                    create_subdirname,
                                    pack_sdr_files, make_okay_files,
@@ -386,13 +386,8 @@ def spawn_cspp(current_granule, *glist, **kwargs):
         LOG.info("Start time of current granule (from messages): %s", start_time.strftime('%Y-%m-%d %H:%M'))
 
     start_time = get_datetime_from_filename(current_granule)
-    LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:'))
-    #start_str = start_time.strftime("d%Y%m%d_t%H%M%S")
-    start_str = start_time.strftime("d%Y%m%d_t%H%M")
-    LOG.info("Start file string with obs time of current granule: %s", start_str)
-    result_files = [new_file
-                    for new_file in new_result_files
-                    if start_str in new_file]
+    LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
+    result_files = [new_file for new_file in new_result_files if is_same_granule(current_granule, new_file, 30.)]
 
     LOG.info("Number of results files = " + str(len(result_files)))
     return working_dir, result_files

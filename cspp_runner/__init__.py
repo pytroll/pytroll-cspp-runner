@@ -85,9 +85,27 @@ def _dte2time(date, start_time, end_time):
 def get_datetime_from_filename(filename):
     """Get start observation time from the filename. Example:
     'GMODO_npp_d20120405_t0037099_e0038341_b00001_c20120405124731856767_cspp_dev.h5'
+    'SVM11_npp_d20180121_t0903382_e0905024_b32305_c20180121091145126446_cspp_dev.h5'
     """
 
     bname = os.path.basename(filename)
     sll = bname.split('_')
-    # return datetime.strptime(sll[2] + sll[3][:-1], "d%Y%m%dt%H%M%S")
-    return datetime.strptime(sll[2] + sll[3][:-3], "d%Y%m%dt%H%M")
+    return datetime.strptime(sll[2] + sll[3][:-1], "d%Y%m%dt%H%M%S")
+
+
+def is_same_granule(filename1, filename2, sec_tolerance):
+    """
+    Take two SDR/RDR files and check their observation time from the filename
+    and determine if they belong to the same granule. Small deviations can
+    happen between RDR files and corresponding SDR files.
+
+    Type of files that can be checked against each other:
+    'GMODO_npp_d20120405_t0037099_e0038341_b00001_c20120405124731856767_cspp_dev.h5'
+    'SVM11_npp_d20180121_t0903382_e0905024_b32305_c20180121091145126446_cspp_dev.h5'
+
+    """
+
+    t1_ = get_datetime_from_filename(filename1)
+    t2_ = get_datetime_from_filename(filename2)
+    delta_t = abs(t1_ - t2_)
+    return delta_t.total_seconds() < sec_tolerance
