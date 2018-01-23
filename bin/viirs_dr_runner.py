@@ -39,7 +39,7 @@ import cspp_runner
 import cspp_runner.orbitno
 
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
-CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/luts')
+CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
@@ -161,8 +161,7 @@ def update_lut_files():
     cmdstr = OPTIONS['mirror_jpss_luts']
     LOG.info("Download command: " + cmdstr)
 
-    lftp_proc = Popen(cmdstr, shell=True, env=my_env,
-                      stderr=PIPE, stdout=PIPE)
+    lftp_proc = Popen(cmdstr, shell=True, env=my_env, stderr=PIPE, stdout=PIPE)
 
     while True:
         line = lftp_proc.stdout.readline()
