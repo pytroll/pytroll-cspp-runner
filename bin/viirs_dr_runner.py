@@ -38,6 +38,8 @@ import netifaces
 import cspp_runner
 import cspp_runner.orbitno
 
+PATH = os.environ.get('PATH', '')
+
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
 CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
@@ -264,6 +266,7 @@ def run_cspp(*viirs_rdr_files):
     viirs_sdr_call = OPTIONS['viirs_sdr_call']
     viirs_sdr_options = eval(CONF.get(MODE, 'viirs_sdr_options'))
     LOG.info("viirs_sdr_options = " + str(viirs_sdr_options))
+    LOG.info("Path from environment: %s", str(PATH))
     if not isinstance(viirs_sdr_options, list):
         LOG.warning("No options will be passed to CSPP")
         viirs_sdr_options = []
