@@ -160,7 +160,7 @@ def update_lut_files():
     # lftp -c "mirror --verbose --only-newer --parallel=2 $JPSS_REMOTE_ANC_DIR $CSPP_RT_SDR_LUTS"
     # cmdstr = ('lftp -c "mirror --verbose --only-newer --parallel=2 ' +
     #           URL_JPSS_REMOTE_ANC_DIR + ' ' + LUT_DIR + '"')
-    cmdstr = OPTIONS['mirror_jpss_luts']
+    cmdstr = OPTIONS['mirror_jpss_luts'] + ' -W {workdir}'.format(workdir=CSPP_WORKDIR)
     LOG.info("Download command: " + cmdstr)
 
     lftp_proc = Popen(cmdstr, shell=True, env=my_env, stderr=PIPE, stdout=PIPE)
@@ -219,7 +219,7 @@ def update_ancillary_files():
     LOG.info("Start downloading dynamic ancillary data " +
              "(TLE and Polar Wander files)....")
 
-    cmdstr = OPTIONS['mirror_jpss_ancillary']
+    cmdstr = OPTIONS['mirror_jpss_ancillary'] + ' -W {workdir}'.format(workdir=CSPP_WORKDIR)
     LOG.info("Download command: " + cmdstr)
 
     mirror_proc = Popen(cmdstr, shell=True, env=my_env,
