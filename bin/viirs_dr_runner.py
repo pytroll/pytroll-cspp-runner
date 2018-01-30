@@ -365,12 +365,13 @@ def spawn_cspp(current_granule, *glist, **kwargs):
     """Spawn a CSPP run on the set of RDR files given"""
 
     start_time = kwargs.get('start_time')
+    platform_name = kwargs.get('platform_name')
 
     LOG.info("Start CSPP: RDR files = " + str(glist))
     working_dir = run_cspp(*glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
-    new_result_files = get_sdr_files(working_dir)
+    new_result_files = get_sdr_files(working_dir, platform_name=platform_name)
     LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
     if len(new_result_files) == 0:
         LOG.warning("No SDR files available. CSPP probably failed!")
@@ -589,7 +590,7 @@ def npp_rolling_runner():
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
     from multiprocessing import cpu_count
 
-    LOG.info("*** Start the Suomi NPP SDR runner:")
+    LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
     LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(THR_LUT_FILES_AGE_DAYS))
 
     fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
@@ -629,7 +630,8 @@ def npp_rolling_runner():
                 tobj = viirs_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
-                subd = create_subdirname(tobj, orbit=viirs_proc.orbit_number)
+                subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
+                                         orbit=viirs_proc.orbit_number)
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
 
                 LOG.info("Get the results from the multiptocessing pool-run")

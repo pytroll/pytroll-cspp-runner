@@ -10,6 +10,11 @@ from cspp_runner.orbitno import TBUS_STYLE
 import logging
 LOG = logging.getLogger(__name__)
 
+TLE_SATNAME = {'npp': 'SUOMI NPP',
+               'j01': 'JPSS-1',
+               'noaa20': 'JPSS-1'
+               }
+
 
 def cleanup_cspp_workdir(workdir):
     """Clean up the CSPP working dir after processing"""
@@ -24,19 +29,19 @@ def cleanup_cspp_workdir(workdir):
     return
 
 
-def get_sdr_files(sdr_dir):
+def get_sdr_files(sdr_dir, **kwargs):
     """Get the sdr filenames (all M- and I-bands plus geolocation for the
     direct readout swath"""
 
     # VIIRS M-bands + geolocation:
-    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_npp_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GM??O_npp_*.h5')))
+    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
+                   glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
     # VIIRS I-bands + geolocation:
-    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_npp_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GI??O_npp_*.h5')))
+    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_???_*.h5')) +
+                   glob(os.path.join(sdr_dir, 'GI??O_???_*.h5')))
     # VIIRS DNB band + geolocation:
-    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_npp_*.h5')) +
-                 glob(os.path.join(sdr_dir, 'GDNBO_npp_*.h5')))
+    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
+                 glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
 
     return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files)
 
@@ -44,6 +49,8 @@ def get_sdr_files(sdr_dir):
 def create_subdirname(obstime, with_seconds=False, **kwargs):
     """Generate the pps subdirectory name from the start observation time, ex.:
     'npp_20120405_0037_02270'"""
+    platform_name = kwargs.get(platform_name, 'npp')
+
     if "orbit" in kwargs:
         orbnum = int(kwargs['orbit'])
     else:
@@ -51,7 +58,7 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
         from cspp_runner import orbitno
 
         try:
-            tle = orbitno.get_tle('npp', obstime)
+            tle = orbitno.get_tle(TLE_SATNAME.get(platform_name), obstime)
             orbital_ = Orbital(tle.platform, line1=tle.line1, line2=tle.line2)
             orbnum = orbital_.get_orbit_number(obstime, tbus_style=TBUS_STYLE)
         except orbitno.NoTleFile:
@@ -61,9 +68,9 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
             orbnum = 1
 
     if with_seconds:
-        return obstime.strftime('npp_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
+        return platform_name + obstime.strftime('_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
     else:
-        return obstime.strftime('npp_%Y%m%d_%H%M_') + '%.5d' % orbnum
+        return platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
 
 
 def make_okay_files(base_dir, subdir_name):

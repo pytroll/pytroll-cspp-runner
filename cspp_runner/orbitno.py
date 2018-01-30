@@ -12,7 +12,11 @@ LOG = logging.getLogger(__name__)
 class NoTleFile(Exception):
     pass
 
-TLE_SATNAME = {'npp': 'SUOMI NPP', }
+TLE_SATNAME = {'npp': 'SUOMI NPP',
+               'j01': 'JPSS-1',
+               'noaa20': 'JPSS-1'
+               }
+
 TBUS_STYLE = False
 
 _re_replace_orbitno = re.compile(r"_b(\d{5})")
