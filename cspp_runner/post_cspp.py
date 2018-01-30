@@ -49,7 +49,7 @@ def get_sdr_files(sdr_dir, **kwargs):
 def create_subdirname(obstime, with_seconds=False, **kwargs):
     """Generate the pps subdirectory name from the start observation time, ex.:
     'npp_20120405_0037_02270'"""
-    platform_name = kwargs.get(platform_name, 'npp')
+    platform_name = kwargs.get('platform_name', 'npp')
 
     if "orbit" in kwargs:
         orbnum = int(kwargs['orbit'])
