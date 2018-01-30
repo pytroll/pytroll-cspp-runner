@@ -488,6 +488,7 @@ class ViirsSdrProcessor(object):
         LOG.info("Sat and Instrument: " + str(msg.data['platform_name'])
                  + " " + str(msg.data['sensor']))
 
+        self.platform_name = str(msg.data['platform_name'])
         self.message_data = msg.data
         start_time = msg.data['start_time']
         try:

@@ -15,6 +15,8 @@ TLE_SATNAME = {'npp': 'SUOMI NPP',
                'noaa20': 'JPSS-1'
                }
 
+PLATFORM_NAME = {'JPSS-1': 'noaa20'}
+
 
 def cleanup_cspp_workdir(workdir):
     """Clean up the CSPP working dir after processing"""
@@ -49,7 +51,7 @@ def get_sdr_files(sdr_dir, **kwargs):
 def create_subdirname(obstime, with_seconds=False, **kwargs):
     """Generate the pps subdirectory name from the start observation time, ex.:
     'npp_20120405_0037_02270'"""
-    platform_name = kwargs.get('platform_name', 'npp')
+    platform_name = PLATFORM_NAME.get(kwargs.get('platform_name', 'npp'))
 
     if "orbit" in kwargs:
         orbnum = int(kwargs['orbit'])
