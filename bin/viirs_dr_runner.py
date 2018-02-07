@@ -49,7 +49,7 @@ MODE = os.getenv("SMHI_MODE")
 if MODE is None:
     MODE = "dev"
 
-VIIRS_SATELLITES = ['Suomi-NPP', 'JPSS-1', 'JPSS-2']
+VIIRS_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21', 'JPSS-1', 'JPSS-2']
 
 from urlparse import urlparse
 import posttroll.subscriber
