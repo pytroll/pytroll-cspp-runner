@@ -16,7 +16,8 @@ TLE_SATNAME = {'npp': 'SUOMI NPP',
                'noaa21': 'JPSS-2'
                }
 
-PLATFORM_NAME = {'JPSS-1': 'noaa20',
+PLATFORM_NAME = {'Suomi-NPP': 'npp',
+                 'JPSS-1': 'noaa20',
                  'NOAA-20': 'noaa20',
                  'NOAA-21': 'noaa21'}
 
