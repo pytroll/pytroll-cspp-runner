@@ -13,8 +13,8 @@ class NoTleFile(Exception):
     pass
 
 TLE_SATNAME = {'npp': 'SUOMI NPP',
-               'j01': 'JPSS-1',
-               'noaa20': 'JPSS-1'
+               'j01': 'NOAA-20',
+               'noaa20': 'NOAA-20'
                }
 
 TBUS_STYLE = False
