@@ -574,6 +574,9 @@ class ViirsSdrProcessor(object):
         start_time = get_datetime_from_filename(keeper)
         if self.pass_start_time is None:
             self.pass_start_time = start_time
+            LOG.debug("Set the start time of the entire swath: %s", self.pass_start_time.strftime('%Y-%m-%d %H:%M:%S'))
+        else:
+            LOG.debug("Start time of the entire swath is not changed")
 
         LOG.info("Before call to spawn_cspp. Argument list = " +
                  str([keeper] + self.glist))
@@ -621,7 +624,7 @@ def npp_rolling_runner():
         with Publish('viirs_dr_runner', 0) as publisher:
             while True:
                 viirs_proc.initialise()
-                for msg in subscr.recv(timeout=90):
+                for msg in subscr.recv(timeout=300):
                     status = viirs_proc.run(msg)
                     if not status:
                         break  # end the loop and reinitialize !
