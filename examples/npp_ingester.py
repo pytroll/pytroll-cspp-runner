@@ -35,18 +35,16 @@ if MODE is None:
 
 
 files = [
-    "/data/CSPP/npp-viirs-rdr-incomming/RNSCA-RVIRS_npp_d20180423_t1334093_e1345321_b33612_c20180423134552452000_all-_dev.h5",
-    ]
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1355276_e1356477_b00001_c20141031135816944000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1356495_e1358131_b00001_c20141031135941994000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1358150_e1359385_b00001_c20141031140107539000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1359403_e1401040_b00001_c20141031140233092000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1401057_e1402293_b00001_c20141031140358156000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1402311_e1403547_b00001_c20141031140523701000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1403565_e1405201_b00001_c20141031140649827000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1405220_e1406455_b00001_c20141031140706058000_nfts_drl.h5",
-#    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1406473_e1406562_b00001_c20141031140706175000_nfts_drl.h5",
-#]
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1355276_e1356477_b00001_c20141031135816944000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1356495_e1358131_b00001_c20141031135941994000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1358150_e1359385_b00001_c20141031140107539000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1359403_e1401040_b00001_c20141031140233092000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1401057_e1402293_b00001_c20141031140358156000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1402311_e1403547_b00001_c20141031140523701000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1403565_e1405201_b00001_c20141031140649827000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1405220_e1406455_b00001_c20141031140706058000_nfts_drl.h5",
+    "/san1/polar_in/direct_readout/npp/lvl0/RNSCA-RVIRS_npp_d20141031_t1406473_e1406562_b00001_c20141031140706175000_nfts_drl.h5",
+]
 
 
 def get_rdr_times(filename):
@@ -74,12 +72,10 @@ def create_rdr_message(filename):
     data["orbit_number"] = "00001"
     data["start_time"], data["end_time"] = get_rdr_times(filename)
     data["filename"] = os.path.basename(filename)
-    #data["uri"] = "ssh://safe.smhi.se" + filename
-    data["uri"] = "ssh://satproc3" + filename
+    data["uri"] = "ssh://safe.smhi.se" + filename
     environment = MODE
-    #msg = Message('/' + data['format'] + '/' + data['data_processing_level'] +
-    #              '/norrköping/' + environment + '/polar/direct_readout/',
-    msg = Message('/RDRTEST',
+    msg = Message('/' + data['format'] + '/' + data['data_processing_level'] +
+                  '/norrköping/' + environment + '/polar/direct_readout/',
                   "file", data).encode()
     print "Publishing", msg
     return msg
