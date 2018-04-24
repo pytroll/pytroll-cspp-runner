@@ -45,7 +45,7 @@ CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
-MODE = os.getenv("SMHI_MODE")
+MODE = None
 if MODE is None:
     MODE = "dev"
 
@@ -590,26 +590,27 @@ class ViirsSdrProcessor(object):
         return True
 
 
-def npp_rolling_runner():
+def npp_rolling_runner(skip_anc_lut_update):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
     from multiprocessing import cpu_count
 
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
-    LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(THR_LUT_FILES_AGE_DAYS))
+    if not skip_anc_lut_update:
+        LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(THR_LUT_FILES_AGE_DAYS))
 
-    fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
-    if fresh:
-        LOG.info("Files in the LUT dir are fresh...")
-        LOG.info("...or download has been attempted recently! " +
-                 "No url downloading....")
-    else:
-        LOG.warning("Files in the LUT dir are non existent or old. " +
-                    "Start url fetch...")
-        update_lut_files()
+        fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
+        if fresh:
+            LOG.info("Files in the LUT dir are fresh...")
+            LOG.info("...or download has been attempted recently! " +
+                     "No url downloading....")
+        else:
+            LOG.warning("Files in the LUT dir are non existent or old. " +
+                        "Start url fetch...")
+            update_lut_files()
 
-    LOG.info("Dynamic ancillary data will be updated. " +
-             "Start url fetch...")
-    update_ancillary_files()
+        LOG.info("Dynamic ancillary data will be updated. " +
+                 "Start url fetch...")
+        update_ancillary_files()
 
     ncpus_available = cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
@@ -717,15 +718,6 @@ if __name__ == "__main__":
 
     SITE = OPTIONS.get('site')
 
-    THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
-    URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
-    URL_JPSS_REMOTE_ANC_DIR = OPTIONS['url_jpss_remote_anc_dir']
-    LUT_DIR = OPTIONS.get('lut_dir', CSPP_RT_SDR_LUTS)
-    LUT_UPDATE_STAMPFILE_RPEFIX = OPTIONS['lut_update_stampfile_prefix']
-    ANC_UPDATE_STAMPFILE_RPEFIX = OPTIONS['anc_update_stampfile_prefix']
-    URL_DOWNLOAD_TRIAL_FREQUENCY_HOURS = OPTIONS[
-        'url_download_trial_frequency_hours']
-
     if args.log is not None:
         # handler = logging.FileHandler(_NPP_SDRPROC_LOG_FILE)
         ndays = int(OPTIONS.get("log_rotation_days", 1))
@@ -752,4 +744,20 @@ if __name__ == "__main__":
 
     LOG = logging.getLogger('viirs_dr_runner')
 
-    npp_rolling_runner()
+    skip_lut_anc_update=False
+    try:
+        THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
+        URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
+        URL_JPSS_REMOTE_ANC_DIR = OPTIONS['url_jpss_remote_anc_dir']
+        LUT_DIR = OPTIONS.get('lut_dir', CSPP_RT_SDR_LUTS)
+        LUT_UPDATE_STAMPFILE_RPEFIX = OPTIONS['lut_update_stampfile_prefix']
+        ANC_UPDATE_STAMPFILE_RPEFIX = OPTIONS['anc_update_stampfile_prefix']
+        URL_DOWNLOAD_TRIAL_FREQUENCY_HOURS = OPTIONS[
+            'url_download_trial_frequency_hours']
+    except:
+        LOG.info("One or more of the lut or anc config variables are not given. Will not update any of those")
+        LOG.info("Be sure to tun you sdr script without the -l flag to keep your luts and ancillary data updated")
+        skip_lut_anc_update=True
+        pass
+    
+    npp_rolling_runner(skip_lut_anc_update)
