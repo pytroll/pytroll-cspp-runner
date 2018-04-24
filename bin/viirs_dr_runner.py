@@ -7,6 +7,7 @@
 
 #   Adam.Dybbroe <a000680@c14526.ad.smhi.se>
 #   Martin.Raspaud <martin.raspaud@smhi.se>
+#   Trygve Aspenes <trygveas@met.no>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -619,7 +620,9 @@ def npp_rolling_runner(skip_anc_lut_update):
     viirs_proc = ViirsSdrProcessor(ncpus)
 
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
-    with posttroll.subscriber.Subscribe('',
+    services=OPTIONS.get('services','').split(',')
+    LOG.debug("Subscribing to services: {}".format(services))
+    with posttroll.subscriber.Subscribe(services,
                                         SUBSCRIBE_TOPICS, True) as subscr:
                                         #['RDR', ], True) as subscr:
         with Publish('viirs_dr_runner', 0) as publisher:
