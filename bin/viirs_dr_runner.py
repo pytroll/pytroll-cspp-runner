@@ -258,19 +258,19 @@ def update_ancillary_files():
     return
 
 
-def run_cspp(*viirs_rdr_files):
+def run_cspp(sensor, *rdr_files):
     """Run CSPP on VIIRS RDR files"""
     from subprocess import Popen, PIPE, STDOUT
     import time
     import tempfile
 
-    viirs_sdr_call = OPTIONS['viirs_sdr_call']
-    viirs_sdr_options = eval(CONF.get(MODE, 'viirs_sdr_options'))
-    LOG.info("viirs_sdr_options = " + str(viirs_sdr_options))
+    sdr_call = OPTIONS[sensor + '_sdr_call']
+    sdr_options = eval(CONF.get(MODE, sensor + '_sdr_options'))
+    LOG.info("sdr_options = " + str(sdr_options))
     LOG.info("Path from environment: %s", str(PATH))
-    if not isinstance(viirs_sdr_options, list):
+    if not isinstance(sdr_options, list):
         LOG.warning("No options will be passed to CSPP")
-        viirs_sdr_options = []
+        sdr_options = []
 
     try:
         working_dir = tempfile.mkdtemp(dir=CSPP_WORKDIR)
@@ -278,9 +278,9 @@ def run_cspp(*viirs_rdr_files):
         working_dir = tempfile.mkdtemp()
 
     # Run the command:
-    cmdlist = [viirs_sdr_call]
-    cmdlist.extend(viirs_sdr_options)
-    cmdlist.extend(viirs_rdr_files)
+    cmdlist = [sdr_call]
+    cmdlist.extend(sdr_options)
+    cmdlist.extend(rdr_files)
     t0_clock = time.clock()
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
@@ -362,14 +362,14 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     publisher.send(msg)
 
 
-def spawn_cspp(current_granule, *glist, **kwargs):
+def spawn_cspp(sensor, current_granule, *glist, **kwargs):
     """Spawn a CSPP run on the set of RDR files given"""
 
     start_time = kwargs.get('start_time')
     platform_name = kwargs.get('platform_name')
 
     LOG.info("Start CSPP: RDR files = " + str(glist))
-    working_dir = run_cspp(*glist)
+    working_dir = run_cspp(sensor, *glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
     new_result_files = get_sdr_files(working_dir, platform_name=platform_name)
@@ -461,7 +461,7 @@ class ViirsSdrProcessor(object):
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                           [keeper] + self.glist))
+                                                           ['viirs', keeper] + self.glist))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
@@ -583,7 +583,7 @@ class ViirsSdrProcessor(object):
                  str([keeper] + self.glist))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       [keeper] + self.glist))
+                                                       ['viirs', keeper] + self.glist))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
