@@ -654,22 +654,23 @@ def npp_rolling_runner(skip_anc_lut_update):
 
                 make_okay_files(viirs_proc.sdr_home, subd)
 
-                LOG.info("Now that SDR processing has completed, " +
-                         "check for new LUT files...")
-                fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
-                if fresh:
-                    LOG.info("Files in the LUT dir are fresh...")
-                    LOG.info("...or download has been attempted recently! " +
-                             "No url downloading....")
-                else:
-                    LOG.warning("Files in the LUT dir are " +
-                                "non existent or old. " +
-                                "Start url fetch...")
-                    update_lut_files()
+                if not skip_anc_lut_update:
+                    LOG.info("Now that SDR processing has completed, " +
+                             "check for new LUT files...")
+                    fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
+                    if fresh:
+                        LOG.info("Files in the LUT dir are fresh...")
+                        LOG.info("...or download has been attempted recently! " +
+                                 "No url downloading....")
+                    else:
+                        LOG.warning("Files in the LUT dir are " +
+                                    "non existent or old. " +
+                                    "Start url fetch...")
+                        update_lut_files()
 
-                LOG.info("Dynamic ancillary data will be updated. " +
-                         "Start url fetch...")
-                update_ancillary_files()
+                    LOG.info("Dynamic ancillary data will be updated. " +
+                             "Start url fetch...")
+                    update_ancillary_files()
 
     return
 
