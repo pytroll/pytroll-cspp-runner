@@ -699,10 +699,16 @@ if __name__ == "__main__":
 
     CONF.read(args.config_file)
 
+    try:
+        LOCATION_MODE = CONF.get('DEFAULT','LOCATION_MODE')
+        MODE = os.getenv(LOCATION_MODE)
+    except ConfigParser.NoOptionError as noe:
+        #No LOCATION_MODE given in DEFAULT section. Use what ever mode given in the SMHI_MODE
+        #for backward compability
+        pass
     OPTIONS = {}
     for option, value in CONF.items(MODE, raw=True):
         OPTIONS[option] = value
-
     PUBLISH_TOPIC = OPTIONS.get('publish_topic')
     SUBSCRIBE_TOPICS = OPTIONS.get('subscribe_topics').split(',')
     for item in SUBSCRIBE_TOPICS:
