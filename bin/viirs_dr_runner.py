@@ -36,6 +36,8 @@ from urlparse import urlunsplit
 import socket
 import netifaces
 
+from trollsift.parser import compose
+
 import cspp_runner
 import cspp_runner.orbitno
 
@@ -346,18 +348,26 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     site = SITE
 
     LOG.debug('Site = %s', SITE)
-    LOG.debug('Publish topic = %s', PUBLISH_TOPIC)
-    msg = Message('/'.join(('',
-                            PUBLISH_TOPIC,
-                            to_send['format'],
-                            to_send['data_processing_level'],
-                            site,
-                            MODE,
-                            'polar',
-                            'direct_readout')),
+    if '{' and '}' in PUBLISH_TOPIC:
+        try:
+            publish_topic = compose(PUBLISH_TOPIC, to_send)
+        except:
+            LOG.debug("Sift topic failed: {} {}".format(PUBLISH_TOPIC,to_send))
+            LOG.debug("Be sure to only use available keys.")
+            raise
+    else:
+        publish_topic = '/'.join(('',
+                          PUBLISH_TOPIC,
+                          to_send['format'],
+                          to_send['data_processing_level'],
+                          site,
+                          MODE,
+                          'polar',
+                          'direct_readout'))
+    
+    LOG.debug('Publish topic = %s', publish_topic)
+    msg = Message(publish_topic,
                   "dataset", to_send).encode()
-    # msg = Message('/oper/polar/direct_readout/norrkoping',
-    #              "file", to_send).encode()
     LOG.debug("sending: " + str(msg))
     publisher.send(msg)
 
