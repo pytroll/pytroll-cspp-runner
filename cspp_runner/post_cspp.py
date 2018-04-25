@@ -61,8 +61,8 @@ def get_sdr_files(sensor, sdr_dir, **kwargs):
         return satms_files
 
     elif sensor == "cris":
-        # CRIS (SDR) and geolocation
-        scris_files = (glob(os.path.join(sdr_dir, 'SCRIS_???_*.h5')) +
+        # CRI[SF] (SDR) and geolocation (F is full resolution)
+        scris_files = (glob(os.path.join(sdr_dir, 'SCRI[SF]_???_*.h5')) +
                        glob(os.path.join(sdr_dir, 'GCRSO_???_*.h5')))
         return scris_files
 
