@@ -437,13 +437,9 @@ class _BaseSdrProcessor(object):
 
         self.orbit_number = 1  # Initialised orbit number
         self.platform_name = 'unknown'  # Ex.: Suomi-NPP
-        self.fullswath = False
-        self.cspp_results = []
-        self.glist = []
-        self.pass_start_time = None
-        self.result_files = []
         self.sdr_home = OPTIONS['level1_home']
         self.message_data = None
+        self.initialise()
 
     def initialise(self):
         """Initialise the processor"""
@@ -666,10 +662,9 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
             while True:
                 sdr_proc.initialise()
                 for msg in subscr.recv(timeout=300):
-                    if msg.data['sensor'] == sensor:
-                        status = sdr_proc.run(msg)
-                        if not status:
-                            break  # end the loop and reinitialize !
+                    status = sdr_proc.run(msg)
+                    if not status:
+                        break  # end the loop and reinitialize !
 
                 LOG.debug(
                     "Received message data = %s", str(sdr_proc.message_data))
