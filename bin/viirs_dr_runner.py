@@ -52,7 +52,7 @@ MODE = None
 if MODE is None:
     MODE = "dev"
 
-VIIRS_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
+SDR_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
 
 from urlparse import urlparse
 import posttroll.subscriber
@@ -261,7 +261,7 @@ def update_ancillary_files():
 
 
 def run_cspp(sensor, *rdr_files):
-    """Run CSPP on VIIRS RDR files"""
+    """Run CSPP on *sensor* RDR files"""
     from subprocess import Popen, PIPE, STDOUT
     import time
     import tempfile
@@ -286,24 +286,24 @@ def run_cspp(sensor, *rdr_files):
     t0_clock = time.clock()
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
-    viirs_sdr_proc = Popen(cmdlist,
-                           cwd=working_dir,
-                           stderr=PIPE, stdout=PIPE)
+    sdr_proc = Popen(cmdlist,
+                     cwd=working_dir,
+                     stderr=PIPE, stdout=PIPE)
     while True:
-        line = viirs_sdr_proc.stdout.readline()
+        line = sdr_proc.stdout.readline()
         if not line:
             break
         LOG.info(line.strip('\n'))
 
     while True:
-        errline = viirs_sdr_proc.stderr.readline()
+        errline = sdr_proc.stderr.readline()
         if not errline:
             break
         LOG.info(errline.strip('\n'))
     LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
     LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
 
-    viirs_sdr_proc.poll()
+    sdr_proc.poll()
     return working_dir
 
 
@@ -422,10 +422,10 @@ def get_local_ips():
     return ips
 
 
-class ViirsSdrProcessor(object):
+class _BaseSdrProcessor(object):
 
     """
-    Container for the VIIRS SDR processing based on CSPP
+    Base class for SDR processing based on CSPP
 
     """
 
@@ -452,11 +452,15 @@ class ViirsSdrProcessor(object):
         self.pass_start_time = None
         self.result_files = []
 
+    @property
+    def name(self):
+        return self.SENSOR + "_dr_runner"
+
     def pack_sdr_files(self, subd):
         return pack_sdr_files(self.result_files, self.sdr_home, subd)
 
     def run(self, msg):
-        """Start the VIIRS SDR processing using CSPP on one rdr granule"""
+        """Start the SDR processing using CSPP on one rdr granule"""
 
         if msg:
             LOG.debug("Received message: " + str(msg))
@@ -471,15 +475,15 @@ class ViirsSdrProcessor(object):
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                           ['viirs', keeper] + self.glist))
+                                                           [self.SENSOR, keeper] + self.glist))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
             LOG.debug("No platform_name or sensor in message. Continue...")
             return True
-        elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
-                          msg.data['sensor'] == 'viirs'):
-            LOG.info("Not a VIIRS scene. Continue...")
+        elif msg and not (msg.data['platform_name'] in SDR_SATELLITES and
+                          msg.data['sensor'] == self.SENSOR):
+            LOG.info("Not a %s scene. Continue...", self.SENSOR)
             return True
         elif msg is None:
             return True
@@ -531,7 +535,7 @@ class ViirsSdrProcessor(object):
             return True
 
         # Do processing:
-        LOG.info("RDR to SDR processing on npp/viirs with CSPP start!" +
+        LOG.info("RDR to SDR processing on npp/%s with CSPP start!" % self.SENSOR +
                  " Start time = " + str(start_time))
         LOG.info("File = %s" % str(rdr_filename))
         # Fix orbit number in RDR file:
@@ -593,7 +597,7 @@ class ViirsSdrProcessor(object):
                  str([keeper] + self.glist))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       ['viirs', keeper] + self.glist))
+                                                       [self.SENSOR, keeper] + self.glist))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
@@ -601,8 +605,31 @@ class ViirsSdrProcessor(object):
         return True
 
 
-def npp_rolling_runner(skip_anc_lut_update):
-    """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
+class ViirsSdrProcessor(_BaseSdrProcessor):
+    """Class for SDR/VIIRS processing based on CSPP
+    """
+    SENSOR = 'viirs'
+
+
+class AtmsSdrProcessor(_BaseSdrProcessor):
+    """Class for SDR/ATMS processing based on CSPP
+    """
+    SENSOR = 'atms'
+
+
+class CrisSdrProcessor(_BaseSdrProcessor):
+    """Class for SDR/CRIS processing based on CSPP
+    """
+    SENSOR = 'cris'
+
+
+SDR_PROCESSORS = {"viirs": ViirsSdrProcessor,
+                  "atms": AtmsSdrProcessor,
+                  "cris": CrisSdrProcessor}
+
+
+def npp_rolling_runner(sensor, skip_anc_lut_update):
+    """The NPP (VIIRS, ATMS, CRIS, ...) runner. Listens and triggers processing on RDR granules."""
     from multiprocessing import cpu_count
 
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
@@ -627,45 +654,45 @@ def npp_rolling_runner(skip_anc_lut_update):
     LOG.info("Number of CPUs available = " + str(ncpus_available))
     ncpus = int(OPTIONS.get('ncpus', 1))
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
-    viirs_proc = ViirsSdrProcessor(ncpus)
+
+    sdr_proc = SDR_PROCESSORS[sensor](ncpus)
 
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
-    services=OPTIONS.get('services','').split(',')
+    services = OPTIONS.get('services', '').split(',')
     LOG.debug("Subscribing to services: {}".format(services))
-    with posttroll.subscriber.Subscribe(services,
-                                        SUBSCRIBE_TOPICS, True) as subscr:
-                                        #['RDR', ], True) as subscr:
-        with Publish('viirs_dr_runner', 0) as publisher:
+    with posttroll.subscriber.Subscribe(services, SUBSCRIBE_TOPICS, True) as subscr:
+        with Publish(sdr_proc.name, 0) as publisher:
             while True:
-                viirs_proc.initialise()
+                sdr_proc.initialise()
                 for msg in subscr.recv(timeout=300):
-                    status = viirs_proc.run(msg)
-                    if not status:
-                        break  # end the loop and reinitialize !
+                    if msg.data['sensor'] == sensor:
+                        status = sdr_proc.run(msg)
+                        if not status:
+                            break  # end the loop and reinitialize !
 
                 LOG.debug(
-                    "Received message data = %s", str(viirs_proc.message_data))
-                tobj = viirs_proc.pass_start_time
+                    "Received message data = %s", str(sdr_proc.message_data))
+                tobj = sdr_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
-                subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
-                                         orbit=viirs_proc.orbit_number)
+                subd = create_subdirname(tobj, platform_name=sdr_proc.platform_name,
+                                         orbit=sdr_proc.orbit_number)
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
 
                 LOG.info("Get the results from the multiptocessing pool-run")
-                for res in viirs_proc.cspp_results:
+                for res in sdr_proc.cspp_results:
                     working_dir, tmp_result_files = res.get()
-                    # viirs_proc.working_dirs.append(working_dir)
-                    # viirs_proc.result_files.extend(tmp_result_files)
-                    viirs_proc.result_files = tmp_result_files
-                    sdr_files = viirs_proc.pack_sdr_files(subd)
+                    # sdr_proc.working_dirs.append(working_dir)
+                    # sdr_proc.result_files.extend(tmp_result_files)
+                    sdr_proc.result_files = tmp_result_files
+                    sdr_files = sdr_proc.pack_sdr_files(subd)
                     LOG.info("Cleaning up directory %s" % working_dir)
                     cleanup_cspp_workdir(working_dir)
                     publish_sdr(publisher, sdr_files,
-                                viirs_proc.message_data,
-                                orbit=viirs_proc.orbit_number)
+                                sdr_proc.message_data,
+                                orbit=sdr_proc.orbit_number)
 
-                make_okay_files(viirs_proc.sdr_home, subd)
+                make_okay_files(sdr_proc.sdr_home, subd)
 
                 if not skip_anc_lut_update:
                     LOG.info("Now that SDR processing has completed, " +
@@ -705,6 +732,13 @@ if __name__ == "__main__":
                         type=str,
                         default=None,
                         help="The file to log to (stdout per default).")
+
+    parser.add_argument("-s", "--sensor",
+                        required=True,
+                        dest="sensor",
+                        type=str,
+                        default=None,
+                        help="Sensor type to process (viirs, atms, cris, ...).")
 
     args = parser.parse_args()
 
@@ -774,4 +808,4 @@ if __name__ == "__main__":
         skip_lut_anc_update=True
         pass
     
-    npp_rolling_runner(skip_lut_anc_update)
+    npp_rolling_runner(args.sensor, skip_lut_anc_update)
