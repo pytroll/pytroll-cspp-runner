@@ -48,10 +48,6 @@ CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
-MODE = None
-if MODE is None:
-    MODE = "dev"
-
 SDR_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
 
 from urlparse import urlparse
@@ -730,6 +726,14 @@ if __name__ == "__main__":
                         type=str,
                         default=None,
                         help="The file containing configuration parameters.")
+
+    parser.add_argument("-C", "--section",
+                        required=True,
+                        dest="section",
+                        type=str,
+                        default=None,
+                        help="The section in the config file.")
+
     parser.add_argument("-l", "--log-file", dest="log",
                         type=str,
                         default=None,
@@ -746,17 +750,11 @@ if __name__ == "__main__":
 
     CONF = ConfigParser.ConfigParser()
 
-    print "Read config from", args.config_file
+    print("Read config from %s (section %s)" % (args.config_file, args.section))
 
     CONF.read(args.config_file)
 
-    try:
-        LOCATION_MODE = CONF.get('DEFAULT','LOCATION_MODE')
-        MODE = os.getenv(LOCATION_MODE)
-    except ConfigParser.NoOptionError as noe:
-        #No LOCATION_MODE given in DEFAULT section. Use what ever mode given in the SMHI_MODE
-        #for backward compability
-        pass
+    MODE = args.section
     OPTIONS = {}
     for option, value in CONF.items(MODE, raw=True):
         OPTIONS[option] = value
