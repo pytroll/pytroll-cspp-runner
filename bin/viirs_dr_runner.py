@@ -648,8 +648,15 @@ def npp_rolling_runner(skip_anc_lut_update):
                 tobj = viirs_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
-                subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
-                                         orbit=viirs_proc.orbit_number)
+
+                if 'subdir' in OPTIONS:
+                    subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
+                                             orbit=viirs_proc.orbit_number, subdir=OPTIONS.get('subdir'))
+                else:
+                    #This is the default and original
+                    subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
+                                             orbit=viirs_proc.orbit_number)
+
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
 
                 LOG.info("Get the results from the multiptocessing pool-run")

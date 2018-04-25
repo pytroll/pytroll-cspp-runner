@@ -7,6 +7,7 @@ from datetime import datetime
 import shutil
 from glob import glob
 from cspp_runner.orbitno import TBUS_STYLE
+from trollsift.parser import compose
 import logging
 LOG = logging.getLogger(__name__)
 
@@ -74,11 +75,20 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
             traceback.print_exc(file=sys.stderr)
             orbnum = 1
 
-    if with_seconds:
-        return platform_name + obstime.strftime('_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
+    if 'subdir' in kwargs:
+        subdir_compose = kwargs.copy()
+        subdir_compose['platform_name'] = platform_name
+        subdir_compose['orbnum'] = orbnum
+        subdir_compose['start_time'] = obstime
+        LOG.debug("subdir_compose_ {}".format(subdir_compose))
+        subdir = compose(kwargs['subdir'], subdir_compose)
     else:
-        return platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
+        if with_seconds:
+            subdir = platform_name + obstime.strftime('_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
+        else:
+            subdir = platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
 
+    return subdir
 
 def make_okay_files(base_dir, subdir_name):
     """Make okay file to signal that all SDR files have been placed in
