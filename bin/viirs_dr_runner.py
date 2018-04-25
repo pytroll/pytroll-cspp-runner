@@ -683,8 +683,6 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
                     #This is the default and original
                     subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
                                              orbit=viirs_proc.orbit_number)
-
->>>>>>> b4021957722f1f4f7b33de0516b89508826858bb
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
 
                 LOG.info("Get the results from the multiptocessing pool-run")
