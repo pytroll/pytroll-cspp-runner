@@ -44,7 +44,7 @@ setup(name="cspp_runner",
       scripts=['bin/viirs_dr_runner.py', ],
       data_files=[],
       zip_safe=False,
-      install_requires=['posttroll', ],
+      install_requires=['posttroll','trollsift'],
       # test_requires=['mock'],
       # test_suite='cspp_runner.tests.suite',
       )
