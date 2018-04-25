@@ -105,7 +105,7 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
 
     path = os.path.join(base_dir, subdir)
     if not os.path.exists(path):
-        os.mkdir(path)
+        os.makedirs(path)
 
     LOG.info("Number of SDR files: " + str(len(sdrfiles)))
     retvl = []

@@ -651,7 +651,8 @@ def npp_rolling_runner(skip_anc_lut_update):
 
                 if 'subdir' in OPTIONS:
                     subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
-                                             orbit=viirs_proc.orbit_number, subdir=OPTIONS.get('subdir'))
+                                             orbit=viirs_proc.orbit_number, subdir=OPTIONS.get('subdir'),
+                                             sensor=msg.data['sensor'])
                 else:
                     #This is the default and original
                     subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
