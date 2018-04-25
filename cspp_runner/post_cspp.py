@@ -36,21 +36,38 @@ def cleanup_cspp_workdir(workdir):
     return
 
 
-def get_sdr_files(sdr_dir, **kwargs):
+def get_sdr_files(sensor, sdr_dir, **kwargs):
     """Get the sdr filenames (all M- and I-bands plus geolocation for the
     direct readout swath"""
 
-    # VIIRS M-bands + geolocation:
-    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
-    # VIIRS I-bands + geolocation:
-    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_???_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GI??O_???_*.h5')))
-    # VIIRS DNB band + geolocation:
-    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
-                 glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
+    if sensor == "viirs":
+        # VIIRS M-bands + geolocation:
+        mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
+        # VIIRS I-bands + geolocation:
+        iband_files = (glob(os.path.join(sdr_dir, 'SVI??_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GI??O_???_*.h5')))
+        # VIIRS DNB band + geolocation:
+        dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
+                     glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
+        return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files)
 
-    return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files)
+    elif sensor == "atms":
+        # ATMS Brightness Temperature (SDR) and geolocation
+        satms_files = (glob(os.path.join(sdr_dir, 'SATMS_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GATMO_???_*.h5')))
+        # ATMS Antenna Temperature (TDR) (are they needed ?)
+        #tatms_files = glob(os.path.join(sdr_dir, 'TATMS_???_*.h5')
+        return satms_files
+
+    elif sensor == "cris":
+        # CRIS (SDR) and geolocation
+        scris_files = (glob(os.path.join(sdr_dir, 'SCRIS_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GCRSO_???_*.h5')))
+        return scris_files
+
+    else:
+        LOG.error("Unknow sensor '%s'", sensor)
 
 
 def create_subdirname(obstime, with_seconds=False, **kwargs):

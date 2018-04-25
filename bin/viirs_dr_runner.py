@@ -288,18 +288,19 @@ def run_cspp(sensor, *rdr_files):
     LOG.info("Popen call arguments: " + str(cmdlist))
     sdr_proc = Popen(cmdlist,
                      cwd=working_dir,
-                     stderr=PIPE, stdout=PIPE)
+                     stdout=PIPE, stderr=STDOUT)
     while True:
         line = sdr_proc.stdout.readline()
         if not line:
             break
         LOG.info(line.strip('\n'))
 
-    while True:
-        errline = sdr_proc.stderr.readline()
-        if not errline:
-            break
-        LOG.info(errline.strip('\n'))
+#    while True:
+#        errline = sdr_proc.stderr.readline()
+#        if not errline:
+#            break
+#        LOG.info(errline.strip('\n'))
+
     LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
     LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
 
@@ -382,7 +383,7 @@ def spawn_cspp(sensor, current_granule, *glist, **kwargs):
     working_dir = run_cspp(sensor, *glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
-    new_result_files = get_sdr_files(working_dir, platform_name=platform_name)
+    new_result_files = get_sdr_files(sensor, working_dir, platform_name=platform_name)
     LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
     if len(new_result_files) == 0:
         LOG.warning("No SDR files available. CSPP probably failed!")
