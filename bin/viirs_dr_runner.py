@@ -22,14 +22,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Level-1 processing for VIIRS Suomi NPP Direct Readout data. Using the CSPP
+"""Level-1 processing for VIIRS/ATMS/CRIS Suomi NPP Direct Readout data. Using the CSPP
 level-1 processor from the SSEC, Wisconsin, based on the ADL from the NASA DRL.
 Listen for pytroll messages from Nimbus (NPP file dispatch) and trigger
 processing on direct readout RDR data (granules or full swaths)
 """
 
-
 import os
+import sys
+import logging
 from glob import glob
 from datetime import datetime, timedelta
 from urlparse import urlunsplit
@@ -38,8 +39,19 @@ import netifaces
 
 from trollsift.parser import compose
 
+from urlparse import urlparse
+import posttroll.subscriber
+from posttroll.publisher import Publish
+from posttroll.message import Message
+
 import cspp_runner
 import cspp_runner.orbitno
+from cspp_runner import (get_datetime_from_filename, is_same_granule)
+from cspp_runner.post_cspp import (get_sdr_files,
+                                   create_subdirname,
+                                   pack_sdr_files,
+                                   cleanup_cspp_workdir)
+from cspp_runner.pre_cspp import fix_rdrfile
 
 PATH = os.environ.get('PATH', '')
 
@@ -50,28 +62,11 @@ APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
 SDR_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
 
-from urlparse import urlparse
-import posttroll.subscriber
-from posttroll.publisher import Publish
-from posttroll.message import Message
-
-from cspp_runner import (get_datetime_from_filename, is_same_granule)
-from cspp_runner.post_cspp import (get_sdr_files,
-                                   create_subdirname,
-                                   pack_sdr_files, make_okay_files,
-                                   cleanup_cspp_workdir)
-from cspp_runner.pre_cspp import fix_rdrfile
-
 #: Default time format
 _DEFAULT_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 #: Default log format
 _DEFAULT_LOG_FORMAT = '[%(levelname)s: %(asctime)s : %(name)s] %(message)s'
-
-import os
-import sys
-_NPP_SDRPROC_LOG_FILE = os.environ.get('NPP_SDRPROC_LOG_FILE', None)
-import logging
 
 LOG = logging.getLogger(__name__)
 
@@ -147,9 +142,6 @@ def update_lut_files():
     achieve the best possible SDR processing.
 
     """
-    import os
-    import sys
-    from datetime import datetime
     from subprocess import Popen, PIPE, STDOUT
 
     my_env = os.environ.copy()
@@ -162,19 +154,13 @@ def update_lut_files():
     cmdstr = OPTIONS['mirror_jpss_luts'] + ' -W {workdir}'.format(workdir=CSPP_WORKDIR)
     LOG.info("Download command: " + cmdstr)
 
-    lftp_proc = Popen(cmdstr, shell=True, env=my_env, stderr=PIPE, stdout=PIPE)
+    lftp_proc = Popen(cmdstr, shell=True, env=my_env, stderr=STDOUT, stdout=PIPE)
 
     while True:
         line = lftp_proc.stdout.readline()
         if not line:
             break
         LOG.info(line)
-
-    while True:
-        errline = lftp_proc.stderr.readline()
-        if not errline:
-            break
-        LOG.info(errline)
 
     lftp_proc.poll()
 
@@ -207,9 +193,6 @@ def update_ancillary_files():
     option) and thus the files need to be updated outside the script.
 
     """
-    import os
-    import sys
-    from datetime import datetime
     from subprocess import Popen, PIPE, STDOUT
 
     my_env = os.environ.copy()
@@ -222,19 +205,13 @@ def update_ancillary_files():
     LOG.info("Download command: " + cmdstr)
 
     mirror_proc = Popen(cmdstr, shell=True, env=my_env,
-                        stderr=PIPE, stdout=PIPE)
+                        stderr=STDOUT, stdout=PIPE)
 
     while True:
         line = mirror_proc.stdout.readline()
         if not line:
             break
         LOG.info(line)
-
-    while True:
-        errline = mirror_proc.stderr.readline()
-        if not errline:
-            break
-        LOG.info(errline)
 
     mirror_proc.poll()
 
@@ -254,54 +231,6 @@ def update_ancillary_files():
     LOG.info("Time stamp file = " + filename)
 
     return
-
-
-def run_cspp(sensor, *rdr_files):
-    """Run CSPP on *sensor* RDR files"""
-    from subprocess import Popen, PIPE, STDOUT
-    import time
-    import tempfile
-
-    sdr_call = OPTIONS[sensor + '_sdr_call']
-    sdr_options = eval(CONF.get(MODE, sensor + '_sdr_options'))
-    LOG.info("sdr_options = " + str(sdr_options))
-    LOG.info("Path from environment: %s", str(PATH))
-    if not isinstance(sdr_options, list):
-        LOG.warning("No options will be passed to CSPP")
-        sdr_options = []
-
-    try:
-        working_dir = tempfile.mkdtemp(dir=CSPP_WORKDIR)
-    except OSError:
-        working_dir = tempfile.mkdtemp()
-
-    # Run the command:
-    cmdlist = [sdr_call]
-    cmdlist.extend(sdr_options)
-    cmdlist.extend(rdr_files)
-    t0_clock = time.clock()
-    t0_wall = time.time()
-    LOG.info("Popen call arguments: " + str(cmdlist))
-    sdr_proc = Popen(cmdlist,
-                     cwd=working_dir,
-                     stdout=PIPE, stderr=STDOUT)
-    while True:
-        line = sdr_proc.stdout.readline()
-        if not line:
-            break
-        LOG.info(line.strip('\n'))
-
-#    while True:
-#        errline = sdr_proc.stderr.readline()
-#        if not errline:
-#            break
-#        LOG.info(errline.strip('\n'))
-
-    LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
-    LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
-
-    sdr_proc.poll()
-    return working_dir
 
 
 def get_sdr_times(filename):
@@ -348,25 +277,66 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     if '{' and '}' in PUBLISH_TOPIC:
         try:
             publish_topic = compose(PUBLISH_TOPIC, to_send)
-        except:
-            LOG.debug("Sift topic failed: {} {}".format(PUBLISH_TOPIC,to_send))
+        except:  # noqa
+            LOG.debug("Sift topic failed: {} {}".format(PUBLISH_TOPIC, to_send))
             LOG.debug("Be sure to only use available keys.")
             raise
     else:
         publish_topic = '/'.join(('',
-                          PUBLISH_TOPIC,
-                          to_send['format'],
-                          to_send['data_processing_level'],
-                          site,
-                          MODE,
-                          'polar',
-                          'direct_readout'))
-    
+                                  PUBLISH_TOPIC,
+                                  to_send['format'],
+                                  to_send['data_processing_level'],
+                                  site,
+                                  MODE,
+                                  'polar',
+                                  'direct_readout'))
+
     LOG.debug('Publish topic = %s', publish_topic)
-    msg = Message(publish_topic,
-                  "dataset", to_send).encode()
+    msg = Message(publish_topic, "dataset", to_send).encode()
     LOG.debug("sending: " + str(msg))
     publisher.send(msg)
+
+
+def run_cspp(sensor, *rdr_files):
+    """Run CSPP on *sensor* RDR files"""
+    from subprocess import Popen, PIPE, STDOUT
+    import time
+    import tempfile
+
+    sdr_call = OPTIONS[sensor + '_sdr_call']
+    sdr_options = eval(CONF.get(MODE, sensor + '_sdr_options'))
+    LOG.info("sdr_options = " + str(sdr_options))
+    LOG.info("Path from environment: %s", str(PATH))
+    if not isinstance(sdr_options, list):
+        LOG.warning("No options will be passed to CSPP")
+        sdr_options = []
+
+    try:
+        working_dir = tempfile.mkdtemp(dir=CSPP_WORKDIR)
+    except OSError:
+        working_dir = tempfile.mkdtemp()
+
+    # Run the command:
+    cmdlist = [sdr_call]
+    cmdlist.extend(sdr_options)
+    cmdlist.extend(rdr_files)
+    t0_clock = time.clock()
+    t0_wall = time.time()
+    LOG.info("Popen call arguments: " + str(cmdlist))
+    sdr_proc = Popen(cmdlist,
+                     cwd=working_dir,
+                     stdout=PIPE, stderr=STDOUT)
+    while True:
+        line = sdr_proc.stdout.readline()
+        if not line:
+            break
+        LOG.info(line.strip('\n'))
+
+    LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
+    LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
+
+    sdr_proc.poll()
+    return working_dir
 
 
 def spawn_cspp(sensor, current_granule, *glist, **kwargs):
@@ -462,7 +432,7 @@ class _BaseSdrProcessor(object):
             LOG.debug("glist: " + str(self.glist))
 
         if msg is None and self.glist and len(self.glist) > 2:
-            # The swath is assumed to be finished now
+            # The swath is assumed to be finished now (timeout)
             LOG.debug("The swath is assumed to be finished now")
             del self.glist[0]
             keeper = self.glist[1]
@@ -492,9 +462,10 @@ class _BaseSdrProcessor(object):
                 "Server %s not the current one: %s" % (str(urlobj.netloc),
                                                        socket.gethostname()))
             return True
+
         LOG.info("Ok... " + str(urlobj.netloc))
-        LOG.info("Sat and Instrument: " + str(msg.data['platform_name'])
-                 + " " + str(msg.data['sensor']))
+        LOG.info("Sat and Instrument: " + str(msg.data['platform_name']) +
+                 " " + str(msg.data['sensor']))
 
         self.platform_name = str(msg.data['platform_name'])
         self.message_data = msg.data
@@ -519,9 +490,6 @@ class _BaseSdrProcessor(object):
 
         # Check if the file exists:
         if not os.path.exists(rdr_filename):
-            # raise IOError("File is reported to be dispatched " +
-            #               "but is not there! File = " +
-            #               rdr_filename)
             LOG.error("File is reported to be dispatched " +
                       "but is not there! File = " +
                       rdr_filename)
@@ -680,8 +648,6 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
                 LOG.info("Get the results from the multiptocessing pool-run")
                 for res in sdr_proc.cspp_results:
                     working_dir, tmp_result_files = res.get()
-                    # sdr_proc.working_dirs.append(working_dir)
-                    # sdr_proc.result_files.extend(tmp_result_files)
                     sdr_proc.result_files = tmp_result_files
                     sdr_files = sdr_proc.pack_sdr_files(subd)
                     LOG.info("Cleaning up directory %s" % working_dir)
@@ -689,8 +655,6 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
                     publish_sdr(publisher, sdr_files,
                                 sdr_proc.message_data,
                                 orbit=sdr_proc.orbit_number)
-
-                make_okay_files(sdr_proc.sdr_home, subd)
 
                 if not skip_anc_lut_update:
                     LOG.info("Now that SDR processing has completed, " +
@@ -711,6 +675,7 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
                     update_ancillary_files()
 
     return
+
 
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -767,7 +732,6 @@ if __name__ == "__main__":
     SITE = OPTIONS.get('site')
 
     if args.log is not None:
-        # handler = logging.FileHandler(_NPP_SDRPROC_LOG_FILE)
         ndays = int(OPTIONS.get("log_rotation_days", 1))
         ncount = int(OPTIONS.get("log_rotation_backup", 7))
         handler = handlers.TimedRotatingFileHandler(args.log,
@@ -792,7 +756,7 @@ if __name__ == "__main__":
 
     LOG = logging.getLogger('viirs_dr_runner')
 
-    skip_lut_anc_update=False
+    skip_lut_anc_update = False
     try:
         THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
         URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
@@ -802,10 +766,10 @@ if __name__ == "__main__":
         ANC_UPDATE_STAMPFILE_RPEFIX = OPTIONS['anc_update_stampfile_prefix']
         URL_DOWNLOAD_TRIAL_FREQUENCY_HOURS = OPTIONS[
             'url_download_trial_frequency_hours']
-    except:
+    except:  # noqa
         LOG.info("One or more of the lut or anc config variables are not given. Will not update any of those")
-        LOG.info("Be sure to tun you sdr script without the -l flag to keep your luts and ancillary data updated")
-        skip_lut_anc_update=True
+        LOG.info("Be sure to run you sdr script without the -l flag to keep your luts and ancillary data updated")
+        skip_lut_anc_update = True
         pass
-    
+
     npp_rolling_runner(args.sensor, skip_lut_anc_update)
