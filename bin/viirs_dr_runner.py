@@ -160,7 +160,7 @@ def update_lut_files():
         line = lftp_proc.stdout.readline()
         if not line:
             break
-        LOG.info(line)
+        LOG.info(line.strip())
 
     lftp_proc.poll()
 
@@ -211,7 +211,7 @@ def update_ancillary_files():
         line = mirror_proc.stdout.readline()
         if not line:
             break
-        LOG.info(line)
+        LOG.info(line.strip())
 
     mirror_proc.poll()
 
@@ -296,14 +296,14 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     publisher.send(msg)
 
 
-def run_cspp(sensor, *rdr_files):
-    """Run CSPP on *sensor* RDR files"""
+def run_cspp(*rdr_files):
+    """Run CSPP on RDR files"""
     from subprocess import Popen, PIPE, STDOUT
     import time
     import tempfile
 
-    sdr_call = OPTIONS[sensor + '_sdr_call']
-    sdr_options = eval(CONF.get(MODE, sensor + '_sdr_options'))
+    sdr_call = OPTIONS[SENSOR + '_sdr_call']
+    sdr_options = eval(CONF.get(MODE, SENSOR + '_sdr_options'))
     LOG.info("sdr_options = " + str(sdr_options))
     LOG.info("Path from environment: %s", str(PATH))
     if not isinstance(sdr_options, list):
@@ -329,7 +329,7 @@ def run_cspp(sensor, *rdr_files):
         line = sdr_proc.stdout.readline()
         if not line:
             break
-        LOG.info(line.strip('\n'))
+        LOG.info(line.strip())
 
     LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
     LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
@@ -338,17 +338,17 @@ def run_cspp(sensor, *rdr_files):
     return working_dir
 
 
-def spawn_cspp(sensor, current_granule, *glist, **kwargs):
+def spawn_cspp(current_granule, *glist, **kwargs):
     """Spawn a CSPP run on the set of RDR files given"""
 
     start_time = kwargs.get('start_time')
     platform_name = kwargs.get('platform_name')
 
     LOG.info("Start CSPP: RDR files = " + str(glist))
-    working_dir = run_cspp(sensor, *glist)
+    working_dir = run_cspp(*glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
-    new_result_files = get_sdr_files(sensor, working_dir, platform_name=platform_name)
+    new_result_files = get_sdr_files(SENSOR, working_dir, platform_name=platform_name)
     LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
     if len(new_result_files) == 0:
         LOG.warning("No SDR files available. CSPP probably failed!")
@@ -439,7 +439,7 @@ class _BaseSdrProcessor(object):
                 keeper = self.glist[1]
                 LOG.info("Start CSPP: RDR files = " + str(self.glist))
                 self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                               [self.SENSOR, keeper] + self.glist))
+                                                               [keeper] + self.glist))
                 LOG.debug("Inside run: Return with a False...")
                 return False
             else:
@@ -537,7 +537,7 @@ class _BaseSdrProcessor(object):
                  str([keeper] + self.glist))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       [self.SENSOR, keeper] + self.glist))
+                                                       [keeper] + self.glist))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
@@ -568,7 +568,7 @@ SDR_PROCESSORS = {"viirs": ViirsSdrProcessor,
                   "cris": CrisSdrProcessor}
 
 
-def check_message(sensor, msg):
+def check_message(msg):
     """Check message before passing it to processor"""
 
     if msg:
@@ -587,19 +587,19 @@ def check_message(sensor, msg):
             LOG.debug("No platform_name or sensor in message. Continue...")
             return False
         elif not (msg.data['platform_name'] in SDR_SATELLITES and
-                  msg.data['sensor'] == sensor):
-            LOG.info("Not a %s scene. Continue...", sensor)
+                  msg.data['sensor'] == SENSOR):
+            LOG.info("Not a %s scene. Continue...", SENSOR)
             return False
 
     return True
 
 
-def npp_rolling_runner(sensor, skip_anc_lut_update):
+def npp_rolling_runner():
     """The NPP (VIIRS, ATMS, CRIS, ...) runner. Listens and triggers processing on RDR granules."""
     from multiprocessing import cpu_count
 
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
-    if not skip_anc_lut_update:
+    if not SKIP_ANC_LUT_UPDATE:
         LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(THR_LUT_FILES_AGE_DAYS))
 
         fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
@@ -621,7 +621,7 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
     ncpus = int(OPTIONS.get('ncpus', 1))
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
 
-    sdr_proc = SDR_PROCESSORS[sensor](ncpus)
+    sdr_proc = SDR_PROCESSORS[SENSOR](ncpus)
 
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     services = OPTIONS.get('services', '').split(',')
@@ -631,7 +631,7 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
             while True:
                 sdr_proc.initialise()
                 for msg in subscr.recv(timeout=300):
-                    if check_message(sensor, msg):
+                    if check_message(msg):
                         status = sdr_proc.run(msg)
                         if not status:
                             break  # end the loop and reinitialize !
@@ -662,7 +662,7 @@ def npp_rolling_runner(sensor, skip_anc_lut_update):
                                 sdr_proc.message_data,
                                 orbit=sdr_proc.orbit_number)
 
-                if not skip_anc_lut_update:
+                if not SKIP_ANC_LUT_UPDATE:
                     LOG.info("Now that SDR processing has completed, " +
                              "check for new LUT files...")
                     fresh = check_lut_files(THR_LUT_FILES_AGE_DAYS)
@@ -718,6 +718,8 @@ if __name__ == "__main__":
                         help="Sensor type to process (viirs, atms, cris, ...).")
 
     args = parser.parse_args()
+    SENSOR = args.sensor
+    MODE = args.section
 
     CONF = ConfigParser.ConfigParser()
 
@@ -725,7 +727,6 @@ if __name__ == "__main__":
 
     CONF.read(args.config_file)
 
-    MODE = args.section
     OPTIONS = {}
     for option, value in CONF.items(MODE, raw=True):
         OPTIONS[option] = value
@@ -762,7 +763,11 @@ if __name__ == "__main__":
 
     LOG = logging.getLogger('viirs_dr_runner')
 
-    skip_lut_anc_update = False
+    if SENSOR not in SDR_PROCESSORS:
+        LOG.error("Unknown sensor '%s' (not in %s)", SENSOR, str(SDR_PROCESSORS.keys()))
+        sys.exit(2)
+
+    SKIP_ANC_LUT_UPDATE = False
     try:
         THR_LUT_FILES_AGE_DAYS = OPTIONS.get('threshold_lut_files_age_days', 14)
         URL_JPSS_REMOTE_LUT_DIR = OPTIONS['url_jpss_remote_lut_dir']
@@ -775,7 +780,6 @@ if __name__ == "__main__":
     except:  # noqa
         LOG.info("One or more of the lut or anc config variables are not given. Will not update any of those")
         LOG.info("Be sure to run you sdr script without the -l flag to keep your luts and ancillary data updated")
-        skip_lut_anc_update = True
-        pass
+        SKIP_ANC_LUT_UPDATE = True
 
-    npp_rolling_runner(args.sensor, skip_lut_anc_update)
+    npp_rolling_runner()
