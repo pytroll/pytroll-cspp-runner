@@ -572,7 +572,7 @@ def check_message(msg):
     """Check message before passing it to processor"""
 
     if msg:
-        # Check server address (only accept messages from localhost)
+        # Check server address (only accept messages from current host)
         urlobj = urlparse(msg.data['uri'])
         LOG.info("Publisher is %s", str(urlobj.netloc))
         url_ip = socket.gethostbyname(urlobj.netloc)
@@ -583,12 +583,14 @@ def check_message(msg):
             return False
 
         # Check valid msg.data, platform and sensor
-        if ('platform_name' not in msg.data or 'sensor' not in msg.data):
+        if 'platform_name' not in msg.data or 'sensor' not in msg.data:
             LOG.debug("No platform_name or sensor in message. Continue...")
             return False
-        elif not (msg.data['platform_name'] in SDR_SATELLITES and
-                  msg.data['sensor'] == SENSOR):
-            LOG.info("Not a %s scene. Continue...", SENSOR)
+        if msg.data['platform_name'] not in SDR_SATELLITES:
+            LOG.info("Unknown platform '%s'. Continue...", msg.data['platform_name'])
+            return False
+        if msg.data['sensor'] != SENSOR:
+            LOG.info("Not a '%s' scene. Continue...", SENSOR)
             return False
 
     return True
@@ -630,7 +632,7 @@ def npp_rolling_runner():
         with Publish(sdr_proc.name, 0) as publisher:
             while True:
                 sdr_proc.initialise()
-                for msg in subscr.recv(timeout=300):
+                for msg in subscr.recv(timeout=SUBSCRIBE_RECV_TIMEOUT):
                     if check_message(msg):
                         status = sdr_proc.run(msg)
                         if not status:
@@ -732,6 +734,8 @@ if __name__ == "__main__":
         OPTIONS[option] = value
     PUBLISH_TOPIC = OPTIONS.get('publish_topic')
     SUBSCRIBE_TOPICS = OPTIONS.get('subscribe_topics').split(',')
+    SUBSCRIBE_RECV_TIMEOUT = float(OPTIONS.get('subscribe_recv_timeout', 300))
+
     for item in SUBSCRIBE_TOPICS:
         if len(item) == 0:
             SUBSCRIBE_TOPICS.remove(item)
