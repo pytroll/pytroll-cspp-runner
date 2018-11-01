@@ -327,6 +327,12 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
 
     # Now publish:
     to_send = mda.copy()
+    # Delete the RDR uri from the message:
+    try:
+        del(to_send.data['uri'])
+    except KeyError:
+        LOG.warning("Couldn't remove URI from message")
+
     if 'orbit' in kwargs:
         to_send["orig_orbit_number"] = to_send["orbit_number"]
         to_send["orbit_number"] = kwargs['orbit']
@@ -620,7 +626,7 @@ def npp_rolling_runner():
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     with posttroll.subscriber.Subscribe('',
                                         SUBSCRIBE_TOPICS, True) as subscr:
-                                        #['RDR', ], True) as subscr:
+                                        # ['RDR', ], True) as subscr:
         with Publish('viirs_dr_runner', 0) as publisher:
             while True:
                 viirs_proc.initialise()
@@ -671,6 +677,7 @@ def npp_rolling_runner():
                 update_ancillary_files()
 
     return
+
 
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
