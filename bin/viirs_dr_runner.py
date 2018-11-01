@@ -329,7 +329,7 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     to_send = mda.copy()
     # Delete the RDR uri from the message:
     try:
-        del(to_send.data['uri'])
+        del(to_send['uri'])
     except KeyError:
         LOG.warning("Couldn't remove URI from message")
 
