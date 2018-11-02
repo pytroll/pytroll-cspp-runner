@@ -327,11 +327,15 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
 
     # Now publish:
     to_send = mda.copy()
-    # Delete the RDR uri from the message:
+    # Delete the RDR uri and uid from the message:
     try:
         del(to_send['uri'])
     except KeyError:
         LOG.warning("Couldn't remove URI from message")
+    try:
+        del(to_send['uid'])
+    except KeyError:
+        LOG.warning("Couldn't remove UID from message")
 
     if 'orbit' in kwargs:
         to_send["orig_orbit_number"] = to_send["orbit_number"]
