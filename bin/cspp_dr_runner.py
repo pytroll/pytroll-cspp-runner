@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016, 2018
+# Copyright (c) 2013 - 2019, PyTroll
 
 # Author(s):
 
@@ -256,6 +256,16 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
 
     # Now publish:
     to_send = mda.copy()
+    # Delete the RDR uri and uid from the message:
+    try:
+        del(to_send['uri'])
+    except KeyError:
+        LOG.warning("Couldn't remove URI from message")
+    try:
+        del(to_send['uid'])
+    except KeyError:
+        LOG.warning("Couldn't remove UID from message")
+
     if 'orbit' in kwargs:
         to_send["orig_orbit_number"] = to_send["orbit_number"]
         to_send["orbit_number"] = kwargs['orbit']
@@ -648,7 +658,7 @@ def npp_rolling_runner():
                                              orbit=sdr_proc.orbit_number, subdir=OPTIONS.get('subdir'),
                                              sensor=msg.data['sensor'])
                 else:
-                    #This is the default and original
+                    # This is the default and original
                     subd = create_subdirname(tobj, platform_name=sdr_proc.platform_name,
                                              orbit=sdr_proc.orbit_number)
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
