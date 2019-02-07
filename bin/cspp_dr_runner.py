@@ -500,15 +500,18 @@ class _BaseSdrProcessor(object):
         LOG.info("RDR to SDR processing on npp/%s with CSPP start!" % self.SENSOR +
                  " Start time = " + str(start_time))
         LOG.info("File = %s" % str(rdr_filename))
+        # Everything except 0 will set the skip_rdr_orbit_number_fix to True
+        skip_rdr_orbit_number_fix = bool(OPTIONS.get('skip_rdr_orbit_number_fix', 0))
         # Fix orbit number in RDR file:
-        # LOG.info("Fix orbit number in rdr file...")
-        # try:
-        #    rdr_filename, orbnum = fix_rdrfile(rdr_filename)
-        # except IOError:
-        #    LOG.exception('Failed to fix orbit number in RDR file = %s', str(rdr_filename))
-        # except cspp_runner.orbitno.NoTleFile:
-        #    LOG.exception('Failed to fix orbit number in RDR file = %s (no TLE file)',
-        #                  str(rdr_filename))
+        if not skip_rdr_orbit_number_fix:
+            LOG.info("Fix orbit number in rdr file...")
+            try:
+                rdr_filename, orbnum = fix_rdrfile(rdr_filename)
+            except IOError:
+                LOG.exception('Failed to fix orbit number in RDR file = %s', str(rdr_filename))
+            except cspp_runner.orbitno.NoTleFile:
+                LOG.exception('Failed to fix orbit number in RDR file = %s (no TLE file)',
+                              str(rdr_filename))
 
         if orbnum:
             self.orbit_number = orbnum
