@@ -256,6 +256,16 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
 
     # Now publish:
     to_send = mda.copy()
+    # Delete the RDR uri and uid from the message:
+    try:
+        del(to_send['uri'])
+    except KeyError:
+        LOG.warning("Couldn't remove URI from message")
+    try:
+        del(to_send['uid'])
+    except KeyError:
+        LOG.warning("Couldn't remove UID from message")
+
     if 'orbit' in kwargs:
         to_send["orig_orbit_number"] = to_send["orbit_number"]
         to_send["orbit_number"] = kwargs['orbit']
@@ -491,12 +501,12 @@ class _BaseSdrProcessor(object):
                  " Start time = " + str(start_time))
         LOG.info("File = %s" % str(rdr_filename))
         # Fix orbit number in RDR file:
-        LOG.info("Fix orbit number in rdr file...")
-        #try:
+        # LOG.info("Fix orbit number in rdr file...")
+        # try:
         #    rdr_filename, orbnum = fix_rdrfile(rdr_filename)
-        #except IOError:
+        # except IOError:
         #    LOG.exception('Failed to fix orbit number in RDR file = %s', str(rdr_filename))
-        #except cspp_runner.orbitno.NoTleFile:
+        # except cspp_runner.orbitno.NoTleFile:
         #    LOG.exception('Failed to fix orbit number in RDR file = %s (no TLE file)',
         #                  str(rdr_filename))
 
@@ -641,12 +651,13 @@ def npp_rolling_runner():
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     services = OPTIONS.get('services', '').split(',')
     LOG.debug("Subscribing to services: {}".format(services))
-    with posttroll.subscriber.Subscribe(services, SUBSCRIBE_TOPICS, True) as subscr:
+    with posttroll.subscriber.Subscribe(services,
+                                        SUBSCRIBE_TOPICS, True) as subscr:
         with Publish(sdr_proc.name, 0) as publisher:
             while True:
                 sdr_proc.initialise()
                 for msg in subscr.recv(timeout=SUBSCRIBE_RECV_TIMEOUT):
-                    if check_message(msg, servername=OPTIONS.get('servername',None)):
+                    if check_message(msg, servername=OPTIONS.get('servername', None)):
                         status = sdr_proc.run(msg)
                         if not status:
                             break  # end the loop and reinitialize !
