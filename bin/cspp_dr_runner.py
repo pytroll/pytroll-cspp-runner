@@ -270,8 +270,8 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
-    to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
-
+    to_send['start_time'], to_send['end_time'] = get_sdr_times(to_send['uid'])
+    
     LOG.debug('Site = %s', SITE)
     if '{' and '}' in PUBLISH_TOPIC:
         try:
@@ -448,6 +448,12 @@ class _BaseSdrProcessor(object):
         LOG.debug("")
         LOG.debug("\tMessage:")
         LOG.debug(str(msg))
+        if type(msg.data['sensor']) in (list,):
+            if len(msg.data['sensor']) == 1:
+                msg.data['sensor'] = msg.data['sensor'][0]
+            else:
+                LOG.error("The message sensor element contains more then one sensor name.")
+                return False
         LOG.info("Sat and Instrument: %s %s", str(msg.data['platform_name']),
                  str(msg.data['sensor']))
 
@@ -486,13 +492,13 @@ class _BaseSdrProcessor(object):
         LOG.info("File = %s" % str(rdr_filename))
         # Fix orbit number in RDR file:
         LOG.info("Fix orbit number in rdr file...")
-        try:
-            rdr_filename, orbnum = fix_rdrfile(rdr_filename)
-        except IOError:
-            LOG.exception('Failed to fix orbit number in RDR file = %s', str(rdr_filename))
-        except cspp_runner.orbitno.NoTleFile:
-            LOG.exception('Failed to fix orbit number in RDR file = %s (no TLE file)',
-                          str(rdr_filename))
+        #try:
+        #    rdr_filename, orbnum = fix_rdrfile(rdr_filename)
+        #except IOError:
+        #    LOG.exception('Failed to fix orbit number in RDR file = %s', str(rdr_filename))
+        #except cspp_runner.orbitno.NoTleFile:
+        #    LOG.exception('Failed to fix orbit number in RDR file = %s (no TLE file)',
+        #                  str(rdr_filename))
 
         if orbnum:
             self.orbit_number = orbnum
@@ -568,17 +574,20 @@ SDR_PROCESSORS = {"viirs": ViirsSdrProcessor,
                   "cris": CrisSdrProcessor}
 
 
-def check_message(msg):
+def check_message(msg, servername=None):
     """Check message before passing it to processor"""
 
     if msg:
         # Check server address (only accept messages from current host)
         urlobj = urlparse(msg.data['uri'])
-        LOG.info("Publisher is %s", str(urlobj.netloc))
-        url_ip = socket.gethostbyname(urlobj.netloc)
+        current_server = urlobj.netloc
+        if current_server == '':
+            current_server = servername
+        LOG.info("Publisher is %s", str(current_server))
+        url_ip = socket.gethostbyname(current_server)
         if url_ip not in get_local_ips():
             LOG.warning(
-                "Server %s not the current one: %s" % (str(urlobj.netloc),
+                "Server %s not the current one: %s" % (str(current_server),
                                                        socket.gethostname()))
             return False
 
@@ -589,8 +598,12 @@ def check_message(msg):
         if msg.data['platform_name'] not in SDR_SATELLITES:
             LOG.info("Unknown platform '%s'. Continue...", msg.data['platform_name'])
             return False
-        if msg.data['sensor'] != SENSOR:
-            LOG.info("Not a '%s' scene. Continue...", SENSOR)
+        if type(msg.data['sensor']) in (list,):
+          if SENSOR not in msg.data['sensor']:
+              LOG.info("Not a '%s' scene. Continue... ", SENSOR)
+              return False
+        elif msg.data['sensor'] != SENSOR:
+            LOG.info("Not a '%s' scene. Continue... %s", SENSOR, msg.data['sensor'])
             return False
 
     return True
@@ -633,7 +646,7 @@ def npp_rolling_runner():
             while True:
                 sdr_proc.initialise()
                 for msg in subscr.recv(timeout=SUBSCRIBE_RECV_TIMEOUT):
-                    if check_message(msg):
+                    if check_message(msg, servername=OPTIONS.get('servername',None)):
                         status = sdr_proc.run(msg)
                         if not status:
                             break  # end the loop and reinitialize !
@@ -765,7 +778,7 @@ if __name__ == "__main__":
     logging.getLogger('').setLevel(logging.DEBUG)
     logging.getLogger('posttroll').setLevel(logging.INFO)
 
-    LOG = logging.getLogger('viirs_dr_runner')
+    LOG = logging.getLogger('cspp_dr_runner')
 
     if SENSOR not in SDR_PROCESSORS:
         LOG.error("Unknown sensor '%s' (not in %s)", SENSOR, str(SDR_PROCESSORS.keys()))
