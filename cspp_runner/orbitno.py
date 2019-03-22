@@ -38,8 +38,8 @@ def replace_orbitno(filename):
             if date_key in obj.attrs.keys():
                 if not good_time_val_[0]:
                     time_val = datetime.strptime(
-                        obj.attrs[date_key][0][0] +
-                        obj.attrs[time_key][0][0],
+                        obj.attrs[date_key][0][0].decode("utf-8") +
+                        obj.attrs[time_key][0][0].decode("utf-8"),
                         '%Y%m%d%H%M%S.%fZ')
                     if abs(time_val - no_date) > epsilon_time:
                         good_time_val_[0] = time_val
@@ -56,8 +56,8 @@ def replace_orbitno(filename):
                  'N_Beginning_Orbit_Number')):
                 if orbit_key in obj.attrs.keys():
                     time_val = datetime.strptime(
-                        obj.attrs[date_key][0][0] +
-                        obj.attrs[time_key][0][0],
+                        obj.attrs[date_key][0][0].decode("utf-8") +
+                        obj.attrs[time_key][0][0].decode("utf-8"),
                         '%Y%m%d%H%M%S.%fZ')
 
                     # Check for no date (1958) problem:
