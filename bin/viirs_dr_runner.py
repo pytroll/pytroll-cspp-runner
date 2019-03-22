@@ -288,15 +288,15 @@ def run_cspp(*viirs_rdr_files):
         line = viirs_sdr_proc.stdout.readline()
         if not line:
             break
-        LOG.info(line.strip('\n'))
+        LOG.info(line.decode("utf-8").strip('\n'))
 
     while True:
         errline = viirs_sdr_proc.stderr.readline()
         if not errline:
             break
-        LOG.info(errline.strip('\n'))
-    LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
-    LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
+        LOG.info(errline.decode("utf-8").strip('\n'))
+    LOG.info("Seconds process time: " + (str(time.clock() - t0_clock)))
+    LOG.info("Seconds wall clock time: " + (str(time.time() - t0_wall)))
 
     viirs_sdr_proc.poll()
     return working_dir
