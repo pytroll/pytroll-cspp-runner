@@ -103,22 +103,26 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
         newfilename = os.path.join(path, os.path.basename(sdrfile))
         LOG.info("Copy sdrfile to destination: " + newfilename)
         if os.path.exists(sdrfile):
-            LOG.info("File to copy: {file} <> ST_MTIME={time}".format(file=str(sdrfile),
-                                                                      time=datetime.utcfromtimestamp(os.stat(sdrfile)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
+            LOG.info("File to copy: {file} <> ST_MTIME={time}".format(
+                file=str(sdrfile),
+                time=datetime.utcfromtimestamp(
+                    os.stat(sdrfile)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
         shutil.copy(sdrfile, newfilename)
         if os.path.exists(newfilename):
-            LOG.info("File at destination: {file} <> ST_MTIME={time}".format(file=str(newfilename),
-                                                                             time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
+            LOG.info("File at destination: {file} <> ST_MTIME={time}".format(
+                file=str(newfilename),
+                time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
 
         retvl.append(newfilename)
 
     return retvl
 
+
 # --------------------------------
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print "Usage %s <cspp work dir>" % sys.argv[0]
+        print("Usage %s <cspp work dir>" % sys.argv[0])
         sys.exit()
     else:
         # SDR DIR:

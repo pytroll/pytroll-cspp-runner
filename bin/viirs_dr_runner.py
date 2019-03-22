@@ -29,14 +29,29 @@ processing on direct readout RDR data (granules or full swaths)
 
 
 import os
+import sys
+import socket
+import logging
+import netifaces
 from glob import glob
 from datetime import datetime, timedelta
-from urlparse import urlunsplit
-import socket
-import netifaces
+try:
+    from urllib.parse import urlunsplit, urlparse
+except ImportError:
+    from urlparse import urlunsplit, urlparse
+
+import posttroll.subscriber
+from posttroll.publisher import Publish
+from posttroll.message import Message
 
 import cspp_runner
 import cspp_runner.orbitno
+from cspp_runner import (get_datetime_from_filename, is_same_granule)
+from cspp_runner.post_cspp import (get_sdr_files,
+                                   create_subdirname,
+                                   pack_sdr_files, make_okay_files,
+                                   cleanup_cspp_workdir)
+from cspp_runner.pre_cspp import fix_rdrfile
 
 PATH = os.environ.get('PATH', '')
 
@@ -51,28 +66,13 @@ if MODE is None:
 
 VIIRS_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
 
-from urlparse import urlparse
-import posttroll.subscriber
-from posttroll.publisher import Publish
-from posttroll.message import Message
-
-from cspp_runner import (get_datetime_from_filename, is_same_granule)
-from cspp_runner.post_cspp import (get_sdr_files,
-                                   create_subdirname,
-                                   pack_sdr_files, make_okay_files,
-                                   cleanup_cspp_workdir)
-from cspp_runner.pre_cspp import fix_rdrfile
-
 #: Default time format
 _DEFAULT_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 #: Default log format
 _DEFAULT_LOG_FORMAT = '[%(levelname)s: %(asctime)s : %(name)s] %(message)s'
 
-import os
-import sys
 _NPP_SDRPROC_LOG_FILE = os.environ.get('NPP_SDRPROC_LOG_FILE', None)
-import logging
 
 LOG = logging.getLogger(__name__)
 
@@ -149,9 +149,8 @@ def update_lut_files():
 
     """
     import os
-    import sys
     from datetime import datetime
-    from subprocess import Popen, PIPE, STDOUT
+    from subprocess import Popen, PIPE
 
     my_env = os.environ.copy()
     my_env['JPSS_REMOTE_ANC_DIR'] = URL_JPSS_REMOTE_LUT_DIR
@@ -209,9 +208,8 @@ def update_ancillary_files():
 
     """
     import os
-    import sys
     from datetime import datetime
-    from subprocess import Popen, PIPE, STDOUT
+    from subprocess import Popen, PIPE
 
     my_env = os.environ.copy()
     my_env['JPSS_REMOTE_ANC_DIR'] = URL_JPSS_REMOTE_ANC_DIR
@@ -259,7 +257,7 @@ def update_ancillary_files():
 
 def run_cspp(*viirs_rdr_files):
     """Run CSPP on VIIRS RDR files"""
-    from subprocess import Popen, PIPE, STDOUT
+    from subprocess import Popen, PIPE
     import time
     import tempfile
 
@@ -477,7 +475,7 @@ class ViirsSdrProcessor(object):
             LOG.debug("No platform_name or sensor in message. Continue...")
             return True
         elif msg and not (msg.data['platform_name'] in VIIRS_SATELLITES and
-                          msg.data['sensor'] == 'viirs'):
+                          'viirs' in msg.data['sensor']):
             LOG.info("Not a VIIRS scene. Continue...")
             return True
         elif msg is None:
@@ -493,10 +491,10 @@ class ViirsSdrProcessor(object):
             LOG.warning(
                 "Server %s not the current one: %s" % (str(urlobj.netloc),
                                                        socket.gethostname()))
-            return True
+            #return True
         LOG.info("Ok... " + str(urlobj.netloc))
-        LOG.info("Sat and Instrument: " + str(msg.data['platform_name'])
-                 + " " + str(msg.data['sensor']))
+        LOG.info("Sat and Instrument: " + str(msg.data['platform_name']) +
+                 " " + str(msg.data['sensor']))
 
         self.platform_name = str(msg.data['platform_name'])
         self.message_data = msg.data
@@ -688,7 +686,10 @@ if __name__ == "__main__":
 
     from logging import handlers
     import argparse
-    import ConfigParser
+    try:
+        import configparser
+    except ImportError:
+        import ConfigParser as configparser
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config-file",
@@ -704,9 +705,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    CONF = ConfigParser.ConfigParser()
+    CONF = configparser.ConfigParser()
 
-    print "Read config from", args.config_file
+    print("Read config from", args.config_file)
 
     CONF.read(args.config_file)
 

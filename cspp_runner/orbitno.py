@@ -12,6 +12,7 @@ LOG = logging.getLogger(__name__)
 class NoTleFile(Exception):
     pass
 
+
 TLE_SATNAME = {'npp': 'SUOMI NPP',
                'j01': 'NOAA-20',
                'noaa20': 'NOAA-20'
@@ -97,6 +98,7 @@ def replace_orbitno(filename):
         raise IOError("Failed replacing orbit number in filename '%s'" % fname)
     return os.path.join(dname, fname), orbit
 
+
 if __name__ == '__main__':
     import sys
-    print replace_orbitno(sys.argv[1])
+    print(replace_orbitno(sys.argv[1]))
