@@ -35,6 +35,26 @@ def cleanup_cspp_workdir(workdir):
     return
 
 
+def get_ivcdb_files(sdr_dir):
+    """Locate the ivcdb files need for the VIIRS Active Fires algorithm. These
+       files are not yet part of the standard output of CSPP versio 3.1 and
+       earlier. Use '-d' flag and locate the files in sub-directories
+
+    """
+    # From the Active Fires Insuidetallation G:
+    # find . -type f -name 'IVCDB*.h5' -exec mv {} ${PWD} \;
+
+    import fnmatch
+    import os
+
+    matches = []
+    for root, dirnames, filenames in os.walk(sdr_dir):
+        for filename in fnmatch.filter(filenames, 'IVCDB*.h5'):
+            matches.append(os.path.join(root, filename))
+
+    return matches
+
+
 def get_sdr_files(sdr_dir, **kwargs):
     """Get the sdr filenames (all M- and I-bands plus geolocation for the
     direct readout swath"""
@@ -49,7 +69,9 @@ def get_sdr_files(sdr_dir, **kwargs):
     dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
                  glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
 
-    return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files)
+    ivcdb_files = get_ivcdb_files(sdr_dir)
+
+    return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files) + sorted(ivcdb_files)
 
 
 def create_subdirname(obstime, with_seconds=False, **kwargs):
@@ -113,6 +135,7 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
         retvl.append(newfilename)
 
     return retvl
+
 
 # --------------------------------
 if __name__ == "__main__":
