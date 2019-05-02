@@ -36,7 +36,27 @@ def cleanup_cspp_workdir(workdir):
     return
 
 
-def get_sdr_files(sensor, sdr_dir, **kwargs):
+def get_ivcdb_files(sdr_dir):
+    """Locate the ivcdb files need for the VIIRS Active Fires algorithm. These
+       files are not yet part of the standard output of CSPP versio 3.1 and
+       earlier. Use '-d' flag and locate the files in sub-directories
+
+    """
+    # From the Active Fires Insuidetallation G:
+    # find . -type f -name 'IVCDB*.h5' -exec mv {} ${PWD} \;
+
+    import fnmatch
+    import os
+
+    matches = []
+    for root, dirnames, filenames in os.walk(sdr_dir):
+        for filename in fnmatch.filter(filenames, 'IVCDB*.h5'):
+            matches.append(os.path.join(root, filename))
+
+    return matches
+
+
+def get_sdr_files(sdr_dir, **kwargs):
     """Get the sdr filenames (all M- and I-bands plus geolocation for the
     direct readout swath"""
 
@@ -50,14 +70,17 @@ def get_sdr_files(sensor, sdr_dir, **kwargs):
         # VIIRS DNB band + geolocation:
         dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
                      glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
-        return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files)
+
+        ivcdb_files = get_ivcdb_files(sdr_dir)
+
+        return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files) + sorted(ivcdb_files)
 
     elif sensor == "atms":
         # ATMS Brightness Temperature (SDR) and geolocation
         satms_files = (glob(os.path.join(sdr_dir, 'SATMS_???_*.h5')) +
                        glob(os.path.join(sdr_dir, 'GATMO_???_*.h5')))
         # ATMS Antenna Temperature (TDR) (are they needed ?)
-        #tatms_files = glob(os.path.join(sdr_dir, 'TATMS_???_*.h5')
+        # atms_files = glob(os.path.join(sdr_dir, 'TATMS_???_*.h5')
         return satms_files
 
     elif sensor == "cris":
@@ -130,22 +153,26 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
         newfilename = os.path.join(path, os.path.basename(sdrfile))
         LOG.info("Copy sdrfile to destination: " + newfilename)
         if os.path.exists(sdrfile):
-            LOG.info("File to copy: {file} <> ST_MTIME={time}".format(file=str(sdrfile),
-                                                                      time=datetime.utcfromtimestamp(os.stat(sdrfile)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
+            LOG.info("File to copy: {file} <> ST_MTIME={time}".format(
+                file=str(sdrfile),
+                time=datetime.utcfromtimestamp(
+                    os.stat(sdrfile)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
         shutil.copy(sdrfile, newfilename)
         if os.path.exists(newfilename):
-            LOG.info("File at destination: {file} <> ST_MTIME={time}".format(file=str(newfilename),
-                                                                             time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
+            LOG.info("File at destination: {file} <> ST_MTIME={time}".format(
+                file=str(newfilename),
+                time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
 
         retvl.append(newfilename)
 
     return retvl
 
+
 # --------------------------------
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print "Usage %s <cspp work dir>" % sys.argv[0]
+        print("Usage %s <cspp work dir>" % sys.argv[0])
         sys.exit()
     else:
         # SDR DIR:

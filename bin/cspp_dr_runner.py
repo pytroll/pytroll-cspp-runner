@@ -30,26 +30,28 @@ processing on direct readout RDR data (granules or full swaths)
 
 import os
 import sys
+import socket
 import logging
+import netifaces
 from glob import glob
 from datetime import datetime, timedelta
-from urlparse import urlunsplit
-import socket
-import netifaces
+try:
+    from urllib.parse import urlunsplit, urlparse
+except ImportError:
+    from urlparse import urlunsplit, urlparse
 
-from trollsift.parser import compose
-
-from urlparse import urlparse
 import posttroll.subscriber
 from posttroll.publisher import Publish
 from posttroll.message import Message
+
+from trollsift.parser import compose
 
 import cspp_runner
 import cspp_runner.orbitno
 from cspp_runner import (get_datetime_from_filename, is_same_granule)
 from cspp_runner.post_cspp import (get_sdr_files,
                                    create_subdirname,
-                                   pack_sdr_files,
+                                   pack_sdr_files, make_okay_files,
                                    cleanup_cspp_workdir)
 from cspp_runner.pre_cspp import fix_rdrfile
 
@@ -60,6 +62,10 @@ CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
+MODE = os.getenv("SMHI_MODE")
+if MODE is None:
+    MODE = "dev"
+
 SDR_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
 
 #: Default time format
@@ -67,6 +73,8 @@ _DEFAULT_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 #: Default log format
 _DEFAULT_LOG_FORMAT = '[%(levelname)s: %(asctime)s : %(name)s] %(message)s'
+
+_NPP_SDRPROC_LOG_FILE = os.environ.get('NPP_SDRPROC_LOG_FILE', None)
 
 LOG = logging.getLogger(__name__)
 
@@ -142,6 +150,8 @@ def update_lut_files():
     achieve the best possible SDR processing.
 
     """
+    import os
+    from datetime import datetime
     from subprocess import Popen, PIPE, STDOUT
 
     my_env = os.environ.copy()
@@ -193,6 +203,8 @@ def update_ancillary_files():
     option) and thus the files need to be updated outside the script.
 
     """
+    import os
+    from datetime import datetime
     from subprocess import Popen, PIPE, STDOUT
 
     my_env = os.environ.copy()
@@ -339,8 +351,13 @@ def run_cspp(*rdr_files):
         line = sdr_proc.stdout.readline()
         if not line:
             break
-        LOG.info(line.strip())
+        LOG.info(line.decode("utf-8").strip('\n'))
 
+    while True:
+        errline = viirs_sdr_proc.stderr.readline()
+        if not errline:
+            break
+        LOG.info(errline.decode("utf-8").strip('\n'))
     LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
     LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
 
@@ -440,20 +457,25 @@ class _BaseSdrProcessor(object):
         if self.glist and len(self.glist) > 0:
             LOG.debug("glist: " + str(self.glist))
 
-        if msg is None:
-            # Timeout
-            if self.glist and len(self.glist) > 2:
-                # The swath is assumed to be finished now
-                LOG.debug("The swath is assumed to be finished now")
-                del self.glist[0]
-                keeper = self.glist[1]
-                LOG.info("Start CSPP: RDR files = " + str(self.glist))
-                self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                               [keeper] + self.glist))
-                LOG.debug("Inside run: Return with a False...")
-                return False
-            else:
-                return True
+        if msg is None and self.glist and len(self.glist) > 2:
+            # The swath is assumed to be finished now
+            LOG.debug("The swath is assumed to be finished now")
+            del self.glist[0]
+            keeper = self.glist[1]
+            LOG.info("Start CSPP: RDR files = " + str(self.glist))
+            self.cspp_results.append(self.pool.apply_async(spawn_cspp,
+                                                           [keeper] + self.glist))
+            LOG.debug("Inside run: Return with a False...")
+            return False
+        elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
+            LOG.debug("No platform_name or sensor in message. Continue...")
+            return True
+        elif msg and not (msg.data['platform_name'] in SDR_SATELLITES and
+                          'viirs' in msg.data['sensor']):
+            LOG.info("Not a VIIRS scene. Continue...")
+            return True
+        elif msg is None:
+            return True
 
         LOG.debug("")
         LOG.debug("\tMessage:")
@@ -464,6 +486,15 @@ class _BaseSdrProcessor(object):
             else:
                 LOG.error("The message sensor element contains more then one sensor name.")
                 return False
+        urlobj = urlparse(msg.data['uri'])
+        LOG.debug("Server = " + str(urlobj.netloc))
+        url_ip = socket.gethostbyname(urlobj.netloc)
+        if url_ip not in get_local_ips():
+            LOG.warning(
+                "Server %s not the current one: %s" % (str(urlobj.netloc),
+                                                       socket.gethostname()))
+            # return True
+        LOG.info("Ok... " + str(urlobj.netloc))
         LOG.info("Sat and Instrument: %s %s", str(msg.data['platform_name']),
                  str(msg.data['sensor']))
 
@@ -717,7 +748,10 @@ if __name__ == "__main__":
 
     from logging import handlers
     import argparse
-    import ConfigParser
+    try:
+        import configparser
+    except ImportError:
+        import ConfigParser as configparser
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config-file",
@@ -750,10 +784,9 @@ if __name__ == "__main__":
     SENSOR = args.sensor
     MODE = args.section
 
-    CONF = ConfigParser.ConfigParser()
+    CONF = configparser.ConfigParser()
 
     print("Read config from %s (section %s)" % (args.config_file, args.section))
-
     CONF.read(args.config_file)
 
     OPTIONS = {}
