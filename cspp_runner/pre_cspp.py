@@ -66,7 +66,7 @@ def get_orbitnumbers_to_nppfile(npp_file):
                                 x_time[0][0].split('.')[0])
                 obstimes[group + dset + begin_end] = datetime.strptime(
                     datetime_str,
-                                                                       '%Y%m%d%H%M%S')
+                    '%Y%m%d%H%M%S')
 
     fobj.close()
 
@@ -76,8 +76,8 @@ def get_orbitnumbers_to_nppfile(npp_file):
     # Check for no date (1958) problem:
     dt1958 = datetime(1958, 1, 1)
     if abs(start_obstime - dt1958) < timedelta(days=2):
-        print "Start time wrong: %s" % start_obstime.strftime('%Y%m%d')
-        print "Will use the end time to determine orbit number"
+        print("Start time wrong: %s" % start_obstime.strftime('%Y%m%d'))
+        print("Will use the end time to determine orbit number")
         if abs(end_obstime - dt1958) < timedelta(days=2):
             raise IOError("Both start time and end time is far off in file!")
         obstime = end_obstime
@@ -102,10 +102,10 @@ def get_orbitnumbers_to_nppfile(npp_file):
 
         orbits[key] = sat.get_orbit_number(obstime)
 
-    print "Orbit numbers in swath:"
+    print("Orbit numbers in swath:")
     for key in obstimes:
-        print orbits[key],
-    print
+        print(orbits[key],)
+    print()
 
     return orbits
 
@@ -125,7 +125,7 @@ def fix_nppfile4orbitnumber(orbits, npp_file, outdir):
     outfile = os.path.join(outdir, new_filename)
 
     if os.path.exists(outfile):
-        print "File exists! %s" % os.path.basename(outfile)
+        print("File exists! %s" % os.path.basename(outfile))
         return outfile
 
     shutil.copy(npp_file, outfile)
@@ -141,14 +141,14 @@ def fix_nppfile4orbitnumber(orbits, npp_file, outdir):
                 if key in ['AggregateBeginningOrbitNumber',
                            'N_Beginning_Orbit_Number']:
                     start_orbnum = orbits[group + dset + 'Beginning']
-                    # print "Change orbit number from 1", start_orbnum
+                    # print("Change orbit number from 1", start_orbnum)
                     val = np.array([[start_orbnum]]).astype('uint64')
 
                     out['/Data_Products'][group][dset].attrs[key] = val
 
                 if key in ['AggregateEndingOrbitNumber']:
                     end_orbnum = orbits[group + dset + 'Ending']
-                    # print "Change orbit number from 1", end_orbnum
+                    # print("Change orbit number from 1", end_orbnum)
                     val = np.array([[end_orbnum]]).astype('uint64')
 
                     out['/Data_Products'][group][dset].attrs[key] = val
@@ -169,7 +169,7 @@ def get_npp_orbit_number(obstime):
 # -------------------------
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print "Usage: %s <rdr/sdr filename> <output dir>" % sys.argv[0]
+        print("Usage: %s <rdr/sdr filename> <output dir>" % sys.argv[0])
         sys.exit()
     else:
         nppfile = sys.argv[1]
