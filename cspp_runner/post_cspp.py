@@ -56,7 +56,7 @@ def get_ivcdb_files(sdr_dir):
     return matches
 
 
-def get_sdr_files(sdr_dir, **kwargs):
+def get_sdr_files(sdr_dir, sensor, **kwargs):
     """Get the sdr filenames (all M- and I-bands plus geolocation for the
     direct readout swath"""
 

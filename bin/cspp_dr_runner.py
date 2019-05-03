@@ -292,8 +292,8 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
-    to_send['start_time'], to_send['end_time'] = get_sdr_times(to_send['uid'])
-    
+    to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
+
     LOG.debug('Site = %s', SITE)
     if '{' and '}' in PUBLISH_TOPIC:
         try:
@@ -346,7 +346,7 @@ def run_cspp(*rdr_files):
     LOG.info("Popen call arguments: " + str(cmdlist))
     sdr_proc = Popen(cmdlist,
                      cwd=working_dir,
-                     stdout=PIPE, stderr=STDOUT)
+                     stdout=PIPE, stderr=PIPE)
     while True:
         line = sdr_proc.stdout.readline()
         if not line:
@@ -354,7 +354,7 @@ def run_cspp(*rdr_files):
         LOG.info(line.decode("utf-8").strip('\n'))
 
     while True:
-        errline = viirs_sdr_proc.stderr.readline()
+        errline = sdr_proc.stderr.readline()
         if not errline:
             break
         LOG.info(errline.decode("utf-8").strip('\n'))
@@ -375,7 +375,7 @@ def spawn_cspp(current_granule, *glist, **kwargs):
     working_dir = run_cspp(*glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
-    new_result_files = get_sdr_files(SENSOR, working_dir, platform_name=platform_name)
+    new_result_files = get_sdr_files(working_dir, SENSOR, platform_name=platform_name)
     LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
     if len(new_result_files) == 0:
         LOG.warning("No SDR files available. CSPP probably failed!")
@@ -618,41 +618,6 @@ SDR_PROCESSORS = {"viirs": ViirsSdrProcessor,
                   "cris": CrisSdrProcessor}
 
 
-def check_message(msg, servername=None):
-    """Check message before passing it to processor"""
-
-    if msg:
-        # Check server address (only accept messages from current host)
-        urlobj = urlparse(msg.data['uri'])
-        current_server = urlobj.netloc
-        if current_server == '':
-            current_server = servername
-        LOG.info("Publisher is %s", str(current_server))
-        url_ip = socket.gethostbyname(current_server)
-        if url_ip not in get_local_ips():
-            LOG.warning(
-                "Server %s not the current one: %s" % (str(current_server),
-                                                       socket.gethostname()))
-            return False
-
-        # Check valid msg.data, platform and sensor
-        if 'platform_name' not in msg.data or 'sensor' not in msg.data:
-            LOG.debug("No platform_name or sensor in message. Continue...")
-            return False
-        if msg.data['platform_name'] not in SDR_SATELLITES:
-            LOG.info("Unknown platform '%s'. Continue...", msg.data['platform_name'])
-            return False
-        if type(msg.data['sensor']) in (list,):
-          if SENSOR not in msg.data['sensor']:
-              LOG.info("Not a '%s' scene. Continue... ", SENSOR)
-              return False
-        elif msg.data['sensor'] != SENSOR:
-            LOG.info("Not a '%s' scene. Continue... %s", SENSOR, msg.data['sensor'])
-            return False
-
-    return True
-
-
 def npp_rolling_runner():
     """The NPP (VIIRS, ATMS, CRIS, ...) runner. Listens and triggers processing on RDR granules."""
     from multiprocessing import cpu_count
@@ -691,10 +656,9 @@ def npp_rolling_runner():
             while True:
                 sdr_proc.initialise()
                 for msg in subscr.recv(timeout=SUBSCRIBE_RECV_TIMEOUT):
-                    if check_message(msg, servername=OPTIONS.get('servername', None)):
-                        status = sdr_proc.run(msg)
-                        if not status:
-                            break  # end the loop and reinitialize !
+                    status = sdr_proc.run(msg)
+                    if not status:
+                        break  # end the loop and reinitialize !
 
                 LOG.debug(
                     "Received message data = %s", str(sdr_proc.message_data))
