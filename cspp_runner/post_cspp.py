@@ -7,6 +7,7 @@ from datetime import datetime
 import shutil
 from glob import glob
 from cspp_runner.orbitno import TBUS_STYLE
+from trollsift.parser import compose
 import logging
 LOG = logging.getLogger(__name__)
 
@@ -55,23 +56,41 @@ def get_ivcdb_files(sdr_dir):
     return matches
 
 
-def get_sdr_files(sdr_dir, **kwargs):
+def get_sdr_files(sdr_dir, sensor, **kwargs):
     """Get the sdr filenames (all M- and I-bands plus geolocation for the
     direct readout swath"""
 
-    # VIIRS M-bands + geolocation:
-    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
-    # VIIRS I-bands + geolocation:
-    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_???_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GI??O_???_*.h5')))
-    # VIIRS DNB band + geolocation:
-    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
-                 glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
+    if sensor == "viirs":
+        # VIIRS M-bands + geolocation:
+        mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
+        # VIIRS I-bands + geolocation:
+        iband_files = (glob(os.path.join(sdr_dir, 'SVI??_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GI??O_???_*.h5')))
+        # VIIRS DNB band + geolocation:
+        dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
+                     glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
 
-    ivcdb_files = get_ivcdb_files(sdr_dir)
+        ivcdb_files = get_ivcdb_files(sdr_dir)
 
-    return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files) + sorted(ivcdb_files)
+        return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files) + sorted(ivcdb_files)
+
+    elif sensor == "atms":
+        # ATMS Brightness Temperature (SDR) and geolocation
+        satms_files = (glob(os.path.join(sdr_dir, 'SATMS_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GATMO_???_*.h5')))
+        # ATMS Antenna Temperature (TDR) (are they needed ?)
+        # atms_files = glob(os.path.join(sdr_dir, 'TATMS_???_*.h5')
+        return satms_files
+
+    elif sensor == "cris":
+        # CRI[SF] (SDR) and geolocation (F is full resolution)
+        scris_files = (glob(os.path.join(sdr_dir, 'SCRI[SF]_???_*.h5')) +
+                       glob(os.path.join(sdr_dir, 'GCRSO_???_*.h5')))
+        return scris_files
+
+    else:
+        LOG.error("Unknow sensor '%s'", sensor)
 
 
 def create_subdirname(obstime, with_seconds=False, **kwargs):
@@ -96,11 +115,20 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
             traceback.print_exc(file=sys.stderr)
             orbnum = 1
 
-    if with_seconds:
-        return platform_name + obstime.strftime('_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
+    if 'subdir' in kwargs:
+        subdir_compose = kwargs.copy()
+        subdir_compose['platform_name'] = platform_name
+        subdir_compose['orbnum'] = orbnum
+        subdir_compose['start_time'] = obstime
+        LOG.debug("subdir_compose_ {}".format(subdir_compose))
+        subdir = compose(kwargs['subdir'], subdir_compose)
     else:
-        return platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
+        if with_seconds:
+            subdir = platform_name + obstime.strftime('_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
+        else:
+            subdir = platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
 
+    return subdir
 
 def make_okay_files(base_dir, subdir_name):
     """Make okay file to signal that all SDR files have been placed in
@@ -117,7 +145,7 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
 
     path = os.path.join(base_dir, subdir)
     if not os.path.exists(path):
-        os.mkdir(path)
+        os.makedirs(path)
 
     LOG.info("Number of SDR files: " + str(len(sdrfiles)))
     retvl = []
