@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016, 2018
+# Copyright (c) 2013 - 2019 Pytroll
 
 # Author(s):
 
@@ -297,6 +297,7 @@ def run_cspp(*viirs_rdr_files):
         if not errline:
             break
         LOG.info(errline.strip('\n'))
+
     LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
     LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
 
