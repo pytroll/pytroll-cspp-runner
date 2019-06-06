@@ -268,15 +268,6 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
 
     # Now publish:
     to_send = mda.copy()
-    # Delete the RDR uri and uid from the message:
-    try:
-        del(to_send['uri'])
-    except KeyError:
-        LOG.warning("Couldn't remove URI from message")
-    try:
-        del(to_send['uid'])
-    except KeyError:
-        LOG.warning("Couldn't remove UID from message")
 
     if 'orbit' in kwargs:
         to_send["orig_orbit_number"] = to_send["orbit_number"]
@@ -292,7 +283,17 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
-    to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
+    to_send['start_time'], to_send['end_time'] = get_sdr_times(to_send['uid'])
+
+    # Delete the RDR uri and uid from the message:
+    try:
+        del(to_send['uri'])
+    except KeyError:
+        LOG.warning("Couldn't remove URI from message")
+    try:
+        del(to_send['uid'])
+    except KeyError:
+        LOG.warning("Couldn't remove UID from message")
 
     LOG.debug('Site = %s', SITE)
     if '{' and '}' in PUBLISH_TOPIC:
