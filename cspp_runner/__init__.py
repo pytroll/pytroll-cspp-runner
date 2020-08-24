@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 - 2018 Adam.Dybbroe
+# Copyright (c) 2014 - 2020 Pytroll
 
 # Author(s):
 
@@ -21,13 +21,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-"""
+"""CSPP_runner package init."""
+
 import os
 from datetime import datetime, timedelta
 import re
-
 import logging
+from pkg_resources import get_distribution, DistributionNotFound
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
+
 LOG = logging.getLogger(__name__)
 
 _RE_NPP_STAMP = re.compile(
