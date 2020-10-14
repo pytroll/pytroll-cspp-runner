@@ -278,7 +278,7 @@ def run_cspp(*viirs_rdr_files):
     cmdlist = [viirs_sdr_call]
     cmdlist.extend(viirs_sdr_options)
     cmdlist.extend(viirs_rdr_files)
-    t0_clock = time.clock()
+    t0_clock = time.process_time()
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
     viirs_sdr_proc = Popen(cmdlist,
@@ -296,7 +296,7 @@ def run_cspp(*viirs_rdr_files):
             break
         LOG.info(errline.decode("utf-8").strip('\n'))
 
-    LOG.info("Seconds process time: " + (str(time.clock() - t0_clock)))
+    LOG.info("Seconds process time: " + (str(time.process_time() - t0_clock)))
     LOG.info("Seconds wall clock time: " + (str(time.time() - t0_wall)))
 
     viirs_sdr_proc.poll()
