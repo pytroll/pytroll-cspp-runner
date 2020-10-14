@@ -83,14 +83,24 @@ def _dte2time(date, start_time, end_time):
 
 
 def get_datetime_from_filename(filename):
-    """Get start observation time from the filename. Example:
+    """Get start observation time from the filename.
+
+    Example:
     'GMODO_npp_d20120405_t0037099_e0038341_b00001_c20120405124731856767_cspp_dev.h5'
     'SVM11_npp_d20180121_t0903382_e0905024_b32305_c20180121091145126446_cspp_dev.h5'
     """
+    return get_sdr_times(filename)[0]
 
-    bname = os.path.basename(filename)
-    sll = bname.split('_')
-    return datetime.strptime(sll[2] + sll[3][:-1], "d%Y%m%dt%H%M%S")
+def get_sdr_times(filename):
+    """Get the start and end times from the SDR file name."""
+    basename = os.path.basename(filename)
+    sll = basename.split('_')
+    start_time = datetime.strptime(sll[2] + sll[3], "d%Y%m%dt%H%M%S%f")
+    end_time = datetime.strptime(sll[2] + sll[4], "d%Y%m%de%H%M%S%f")
+    if end_time < start_time:
+        end_time += timedelta(days=1)
+
+    return start_time, end_time
 
 
 def is_same_granule(filename1, filename2, sec_tolerance):

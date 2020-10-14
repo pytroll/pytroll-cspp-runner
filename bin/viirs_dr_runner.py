@@ -46,7 +46,7 @@ from posttroll.message import Message
 
 import cspp_runner
 import cspp_runner.orbitno
-from cspp_runner import (get_datetime_from_filename, is_same_granule)
+from cspp_runner import (get_datetime_from_filename, get_sdr_times, is_same_granule)
 from cspp_runner.post_cspp import (get_sdr_files,
                                    create_subdirname,
                                    pack_sdr_files, make_okay_files,
@@ -301,21 +301,6 @@ def run_cspp(*viirs_rdr_files):
 
     viirs_sdr_proc.poll()
     return working_dir
-
-
-def get_sdr_times(filename):
-    """Get the start and end times from the SDR file name
-    """
-    bname = os.path.basename(filename)
-    sll = bname.split('_')
-    start_time = datetime.strptime(sll[2] + sll[3][:-1],
-                                   "d%Y%m%dt%H%M%S")
-    end_time = datetime.strptime(sll[2] + sll[4][:-1],
-                                 "d%Y%m%de%H%M%S")
-    if end_time < start_time:
-        end_time += timedelta(days=1)
-
-    return start_time, end_time
 
 
 def publish_sdr(publisher, result_files, mda, **kwargs):
