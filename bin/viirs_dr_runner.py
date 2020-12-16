@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 - 2019 Pytroll
+# Copyright (c) 2013 - 2020 Pytroll
 
 # Author(s):
 
@@ -444,8 +444,9 @@ class ViirsSdrProcessor(object):
         if msg:
             LOG.debug("Received message: " + str(msg))
 
-        if self.glist and len(self.glist) > 0:
-            LOG.debug("glist: " + str(self.glist))
+        LOG.debug("glist: " + str(self.glist))
+        # if self.glist and len(self.glist) > 0:
+        #    LOG.debug("glist: " + str(self.glist))
 
         if msg is None and self.glist and len(self.glist) > 2:
             # The swath is assumed to be finished now
@@ -465,6 +466,7 @@ class ViirsSdrProcessor(object):
             LOG.info("Not a VIIRS scene. Continue...")
             return True
         elif msg is None:
+            LOG.debug("Message is None. glist = %s", str(self.glist))
             return True
 
         LOG.debug("")
@@ -620,6 +622,8 @@ def npp_rolling_runner():
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=300):
                     status = viirs_proc.run(msg)
+                    LOG.debug("Sent message to run: %s", str(msg))
+                    LOG.debug("Status: %s", str(status))
                     if not status:
                         break  # end the loop and reinitialize !
 
