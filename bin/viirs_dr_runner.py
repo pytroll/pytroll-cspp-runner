@@ -349,8 +349,6 @@ def publish_sdr(publisher, result_files, mda, **kwargs):
                             'polar',
                             'direct_readout')),
                   "dataset", to_send).encode()
-    # msg = Message('/oper/polar/direct_readout/norrkoping',
-    #              "file", to_send).encode()
     LOG.debug("sending: " + str(msg))
     publisher.send(msg)
 
@@ -445,9 +443,6 @@ class ViirsSdrProcessor(object):
             LOG.debug("Received message: " + str(msg))
 
         LOG.debug("glist: " + str(self.glist))
-        # if self.glist and len(self.glist) > 0:
-        #    LOG.debug("glist: " + str(self.glist))
-
         if msg is None and self.glist and len(self.glist) > 2:
             # The swath is assumed to be finished now
             LOG.debug("The swath is assumed to be finished now")
@@ -479,7 +474,7 @@ class ViirsSdrProcessor(object):
             LOG.warning(
                 "Server %s not the current one: %s" % (str(urlobj.netloc),
                                                        socket.gethostname()))
-            # return True
+
         LOG.info("Ok... " + str(urlobj.netloc))
         LOG.info("Sat and Instrument: " + str(msg.data['platform_name']) +
                  " " + str(msg.data['sensor']))
@@ -507,9 +502,6 @@ class ViirsSdrProcessor(object):
 
         # Check if the file exists:
         if not os.path.exists(rdr_filename):
-            # raise IOError("File is reported to be dispatched " +
-            #               "but is not there! File = " +
-            #               rdr_filename)
             LOG.error("File is reported to be dispatched " +
                       "but is not there! File = " +
                       rdr_filename)
@@ -616,7 +608,6 @@ def npp_rolling_runner():
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     with posttroll.subscriber.Subscribe('',
                                         SUBSCRIBE_TOPICS, True) as subscr:
-                                        # ['RDR', ], True) as subscr:
         with Publish('viirs_dr_runner', 0) as publisher:
             while True:
                 viirs_proc.initialise()
@@ -639,8 +630,6 @@ def npp_rolling_runner():
                 LOG.info("Get the results from the multiptocessing pool-run")
                 for res in viirs_proc.cspp_results:
                     working_dir, tmp_result_files = res.get()
-                    # viirs_proc.working_dirs.append(working_dir)
-                    # viirs_proc.result_files.extend(tmp_result_files)
                     viirs_proc.result_files = tmp_result_files
                     sdr_files = viirs_proc.pack_sdr_files(subd)
                     LOG.info("Cleaning up directory %s" % working_dir)
