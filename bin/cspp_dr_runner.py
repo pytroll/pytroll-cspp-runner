@@ -343,7 +343,11 @@ def run_cspp(*rdr_files):
     cmdlist = [sdr_call]
     cmdlist.extend(sdr_options)
     cmdlist.extend(rdr_files)
-    t0_clock = time.clock()
+    try:
+        t0_clock = time.clock()
+    except AttributeError:
+        t0_clock = time.process_time()
+
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
     sdr_proc = Popen(cmdlist,
@@ -360,7 +364,10 @@ def run_cspp(*rdr_files):
         if not errline:
             break
         LOG.info(errline.decode("utf-8").strip('\n'))
-    LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
+    try:
+        LOG.info("Seconds process time: " + str(time.clock() - t0_clock))
+    except AttributeError:
+        LOG.info("Seconds process time: " + str(time.process_time() - t0_clock))
     LOG.info("Seconds wall clock time: " + str(time.time() - t0_wall))
 
     sdr_proc.poll()
