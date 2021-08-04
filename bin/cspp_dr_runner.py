@@ -29,6 +29,7 @@ processing on direct readout RDR data (granules or full swaths)
 """
 
 import os
+import re
 import sys
 import socket
 import logging
@@ -449,6 +450,18 @@ class _BaseSdrProcessor(object):
     def pack_sdr_files(self, subd):
         return pack_sdr_files(self.result_files, self.sdr_home, subd)
 
+    def parse_orbit_from_sdr(self):
+        for f in self.result_files:
+            bn = os.path.basename(f)
+            bn_match = re.match(r".{5}_.{3}_d.{8}_t.{7}_e.{7}_b(.{5})_.*h5", bn)
+            if bn_match:
+                try:
+                    self.orbit_number = int(bn_match.group(1))
+                except Exception:
+                    self.orbit_number = bn_match.group(1)
+                break
+        return None
+
     def run(self, msg):
         """Start the SDR processing using CSPP on one rdr granule"""
 
@@ -651,9 +664,10 @@ def npp_rolling_runner():
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     services = OPTIONS.get('services', '').split(',')
     LOG.debug("Subscribing to services: {}".format(services))
+    nameservers = OPTIONS.get('nameservers', []).split(',')
     with posttroll.subscriber.Subscribe(services,
                                         SUBSCRIBE_TOPICS, True) as subscr:
-        with Publish(sdr_proc.name, 0) as publisher:
+        with Publish(sdr_proc.name, 0, nameservers=nameservers) as publisher:
             while True:
                 sdr_proc.initialise()
                 for msg in subscr.recv(timeout=SUBSCRIBE_RECV_TIMEOUT):
@@ -680,6 +694,7 @@ def npp_rolling_runner():
                 for res in sdr_proc.cspp_results:
                     working_dir, tmp_result_files = res.get()
                     sdr_proc.result_files = tmp_result_files
+                    sdr_proc.parse_orbit_from_sdr()
                     sdr_files = sdr_proc.pack_sdr_files(subd)
                     LOG.info("Cleaning up directory %s" % working_dir)
                     cleanup_cspp_workdir(working_dir)
