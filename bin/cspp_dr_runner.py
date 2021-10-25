@@ -671,7 +671,10 @@ def npp_rolling_runner():
     LOG.debug("Subscribe topics = %s", str(SUBSCRIBE_TOPICS))
     services = OPTIONS.get('services', '').split(',')
     LOG.debug("Subscribing to services: {}".format(services))
-    nameservers = OPTIONS.get('nameservers', []).split(',')
+    try:
+        nameservers = OPTIONS.get('nameservers', []).split(',')
+    except AttributeError:
+        nameservers = []
     with posttroll.subscriber.Subscribe(services,
                                         SUBSCRIBE_TOPICS, True) as subscr:
         with Publish(sdr_proc.name, 0, nameservers=nameservers) as publisher:
