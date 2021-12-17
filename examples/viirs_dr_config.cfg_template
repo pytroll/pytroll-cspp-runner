@@ -21,19 +21,20 @@ publish_topic = /file/viirs/sdr
 # Posttroll topics to listen to (comma separated)
 subscribe_topics = /file/snpp/viirs,/file/noaa20/viirs
 
-# Location of JPSS lookup tables
-url_jpss_remote_lut_dir = https://jpssdb.ssec.wisc.edu/ancillary/LUTS_V_1_5/
+# Location of JPSS lookup tables.  When in doubt, run sdr_luts.sh manually
+# and study its console output, which will contain the current location.
+url_jpss_remote_lut_dir = https://jpssdb.ssec.wisc.edu/cspp_luts_v_5_0/
 
 # Location of JPSS ancillary data
-url_jpss_remote_anc_dir = https://jpssdb.ssec.wisc.edu/ancillary/
+url_jpss_remote_anc_dir = https://jpssdb.ssec.wisc.edu/cspp_v_4_0/ancillary
 
 # Location to store lookup tables on local disk
 lut_dir = /local_disk/opt/CSPP/SDR_1_5/anc/cache/luts
 
-# ??? 
+# Prefix for files that will be used to describe the time of latest LUT update
 lut_update_stampfile_prefix = /local_disk/opt/CSPP/SDR_1_5/anc/static/lut_update
 
-# ???
+# Prefix for files that will be used to describe the time of latest ancillary data update
 anc_update_stampfile_prefix = /local_disk/opt/CSPP/SDR_1_5/anc/static/anc_update
 
 # time in hours until ancillary data are checked for updates
@@ -49,10 +50,10 @@ log_rotation_days = 1
 log_rotation_backup = 10
 
 # script to update LUTs (must be in PATH)
-sdr_luts.sh
+mirror_jpss_luts = sdr_luts.sh
 
 # script to update ancillary data (must be in PATH)
-sdl_ancillary.sh
+mirror_jpss_ancillary = sdl_ancillary.sh
 
 # ???
 granule_time_tolerance = 10
