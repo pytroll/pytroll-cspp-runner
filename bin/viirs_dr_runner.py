@@ -134,5 +134,6 @@ if __name__ == "__main__":
             OPTIONS["subscribe_topics"],
             OPTIONS["site"],
             OPTIONS["publish_topic"],
-            OPTIONS.get("ncpus", 1)
+            OPTIONS["level1_home"],
+            int(OPTIONS.get("ncpus", 1))
             )

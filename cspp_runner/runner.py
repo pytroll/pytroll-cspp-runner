@@ -585,6 +585,7 @@ def npp_rolling_runner(
         subscribe_topics,
         site,
         publish_topic,
+        level1_home,
         ncpus=1,
         ):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
@@ -614,7 +615,7 @@ def npp_rolling_runner(
     ncpus_available = cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
-    viirs_proc = ViirsSdrProcessor(ncpus)
+    viirs_proc = ViirsSdrProcessor(ncpus, level1_home)
 
     LOG.debug("Subscribe topics = %s", str(subscribe_topics))
     with posttroll.subscriber.Subscribe('',
