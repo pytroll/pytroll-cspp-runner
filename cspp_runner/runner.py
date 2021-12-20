@@ -27,10 +27,8 @@ import logging
 import netifaces
 from glob import glob
 from datetime import datetime, timedelta
-try:
-    from urllib.parse import urlunsplit, urlparse
-except ImportError:
-    from urlparse import urlunsplit, urlparse
+from multiprocessing.pool import ThreadPool
+from urllib.parse import urlunsplit, urlparse
 
 import posttroll.subscriber
 from posttroll.publisher import Publish
@@ -405,7 +403,6 @@ class ViirsSdrProcessor:
     """
 
     def __init__(self, ncpus, level1_home):
-        from multiprocessing.pool import ThreadPool
         self.pool = ThreadPool(ncpus)
         self.ncpus = ncpus
 
