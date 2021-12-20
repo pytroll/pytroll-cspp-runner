@@ -636,7 +636,7 @@ def npp_rolling_runner(
                                          orbit=viirs_proc.orbit_number)
                 LOG.info("Create sub-directory for sdr files: %s" % str(subd))
 
-                LOG.info("Get the results from the multiptocessing pool-run")
+                LOG.info("Get the results from the multiprocessing pool-run")
                 for res in viirs_proc.cspp_results:
                     working_dir, tmp_result_files = res.get()
                     viirs_proc.result_files = tmp_result_files
