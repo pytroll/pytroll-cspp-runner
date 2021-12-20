@@ -12,6 +12,10 @@ working_dir = /san1/wrk_cspp
 # CSPP-viirs batch script and parameters:
 viirs_sdr_call = viirs_sdr.sh
 
+# Options to pass to the viirs_sdr_call
+# see viirs_sdr.sh --help for explanation
+viirs_sdr_options = ['-p 1', '-l']
+
 # number of CPUs to use
 ncpus = 2
 
