@@ -32,10 +32,6 @@ from cspp_runner.runner import npp_rolling_runner
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
 CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 
-MODE = os.getenv("SMHI_MODE")
-if MODE is None:
-    MODE = "dev"
-
 #: Default time format
 _DEFAULT_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -55,6 +51,9 @@ def parse_args():
                         type=str,
                         default=None,
                         help="The file containing configuration parameters.")
+    parser.add_argument("-C", "--config-section",
+                        default=os.getenv("SMHI_MODE") or "dev",
+                        help="log section to use")
     parser.add_argument("-l", "--log-file", dest="log",
                         type=str,
                         default=None,
@@ -74,7 +73,7 @@ def main():
     CONF.read(args.config_file)
 
     OPTIONS = {}
-    for option, value in CONF.items(MODE, raw=True):
+    for option, value in CONF.items(args.config_section, raw=True):
         OPTIONS[option] = value
 
     PUBLISH_TOPIC = OPTIONS.get('publish_topic')
