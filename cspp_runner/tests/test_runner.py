@@ -56,3 +56,17 @@ def test_run_fullswath(tmp_path, fakefile, caplog):
             vsp.run(msg)
         assert crT().apply_async.call_count == 1
         assert caplog.text == ""
+
+
+def test_publish():
+    """Test publishing SDR."""
+    from cspp_runner.runner import publish_sdr
+    from posttroll.publisher import Publish
+    with Publish("bolungarvík", 0) as publisher:
+        publish_sdr(
+                publisher,
+                ["/foo/bar"],
+                {},
+                "wonderland",
+                "treasure/collected/complete",
+                orbit=42)
