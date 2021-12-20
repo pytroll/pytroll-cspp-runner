@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 # Copyright (c) 2013 - 2021 cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
@@ -23,9 +20,12 @@ processing on direct readout RDR data (granules or full swaths)
 """
 
 
+import argparse
+import configparser
 import os
 import sys
 import logging
+import logging.handlers
 
 from cspp_runner.runner import npp_rolling_runner
 
@@ -46,15 +46,8 @@ _DEFAULT_LOG_FORMAT = '[%(levelname)s: %(asctime)s : %(name)s] %(message)s'
 LOG = logging.getLogger(__name__)
 
 
-if __name__ == "__main__":
-
-    from logging import handlers
-    import argparse
-    try:
-        import configparser
-    except ImportError:
-        import ConfigParser as configparser
-
+def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config-file",
                         required=True,
@@ -67,10 +60,15 @@ if __name__ == "__main__":
                         default=None,
                         help="The file to log to (stdout per default).")
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    """Start the CSPP runner."""
 
     CONF = configparser.ConfigParser()
 
+    args = parse_args()
     print("Read config from", args.config_file)
 
     CONF.read(args.config_file)
@@ -137,3 +135,7 @@ if __name__ == "__main__":
             OPTIONS["level1_home"],
             int(OPTIONS.get("ncpus", 1))
             )
+
+
+if __name__ == "__main__":
+    main()
