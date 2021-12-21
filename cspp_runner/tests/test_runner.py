@@ -66,8 +66,11 @@ def test_publish():
     with Publish("bolungarvík", 0) as publisher:
         publish_sdr(
                 publisher,
-                ["/foo/bar"],
-                {"orbit_number": 42},
+		["GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
+                "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
+                "GMTCO_j01_d20211221_t1437324_e1438552_b21200_c20211221144934741554_cspp_dev.h5",
+                "GMTCO_j01_d20211221_t1437324_e1438552_b21200_c20211221144934741554_cspp_dev.h5"],
+                {"orbit_number": 21200},
                 "wonderland",
                 "treasure/collected/complete",
                 orbit=42)
@@ -184,3 +187,51 @@ def test_check_lut_files_outofdate(tmp_path, caplog):
             os.fspath(stamp),
             os.fspath(lut_dir))
     assert not res
+
+
+def test_run_cspp():
+    """Test running CSPP."""
+    import cspp_runner.runner
+    cspp_runner.runner.run_cspp("true", [])
+
+
+def test_spawn_cspp_nominal(tmp_path, caplog):
+    """Test spawning CSPP successfully."""
+    import cspp_runner.runner
+    def fake_run_cspp(call, args, *rdrs):
+        p = tmp_path / "working_dir"
+        p.mkdir()
+        for f in [
+            "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
+            "SVM12_j01_d20211221_t1436067_e1437312_b21200_c20211221145100921548_cspp_dev.h5",
+            "SVM10_j01_d20211221_t1436067_e1437312_b21200_c20211221145100419360_cspp_dev.h5",
+            "SVM02_j01_d20211221_t1436067_e1437312_b21200_c20211221145058798219_cspp_dev.h5",
+            "SVM09_j01_d20211221_t1436067_e1437312_b21200_c20211221145100251266_cspp_dev.h5"]:
+            (p / f).touch()
+        return os.fspath(p)
+    with unittest.mock.patch("cspp_runner.runner.run_cspp") as crr:
+        crr.side_effect = fake_run_cspp
+        with caplog.at_level(logging.DEBUG):
+            (wd, rf) = cspp_runner.runner.spawn_cspp(
+                os.fspath(tmp_path /
+                    "RNSCA-RVIRS_j01_d20211221_t1436057_e1444378_b21199_c20211221144433345000_all-_dev.h5"),
+                viirs_sdr_call="touch",
+                viirs_sdr_options=[],
+                granule_time_tolerance=10)
+    assert "Start CSPP" in caplog.text
+    assert "CSPP probably failed" not in caplog.text
+    assert "Number of results files" in caplog.text
+    assert len(rf) == 5
+
+
+def test_spawn_cspp_failure(tmp_path, caplog):
+    """Test spawning CSPP unsuccessfully."""
+    import cspp_runner.runner
+    with caplog.at_level(logging.WARNING):
+        (wd, rf) = cspp_runner.runner.spawn_cspp(
+            *[os.fspath(tmp_path / f"file{i:d})")
+                for i in range(4)],
+            viirs_sdr_call="false",
+            viirs_sdr_options=[])
+    assert len(rf) == 0
+    assert "CSPP probably failed!" in caplog.text
