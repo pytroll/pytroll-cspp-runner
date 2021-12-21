@@ -73,24 +73,30 @@ def test_publish():
                 orbit=42)
 
 
-def test_update_lut_files_missing_env(monkeypatch, tmp_path):
-    """Test updating the lookup table files fails when env missing."""
+@pytest.mark.parametrize(
+        "funcname", ["update_lut_files", "update_ancillary_files"])
+def test_update_missing_env(monkeypatch, tmp_path, funcname):
+    """Test updating fails when env missing."""
     monkeypatch.delenv("CSPP_WORKDIR", raising=False)
-    from cspp_runner.runner import update_lut_files
+    import cspp_runner.runner
+    updater = getattr(cspp_runner.runner, funcname)
     # should raise exception when no workdir set
     with pytest.raises(EnvironmentError):
-        update_lut_files(
+        updater(
                 "gopher://dummy/location",
                 os.fspath(tmp_path / "stampfile"),
                 "true")
 
 
-def test_update_lut_files_nominal(monkeypatch, tmp_path, caplog):
-    """Test update LUT files nominal case."""
-    from cspp_runner.runner import update_lut_files
+@pytest.mark.parametrize(
+        "funcname", ["update_lut_files", "update_ancillary_files"])
+def test_update__nominal(monkeypatch, tmp_path, caplog, funcname):
+    """Test update nominal case."""
+    import cspp_runner.runner
+    updater = getattr(cspp_runner.runner, funcname)
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     with caplog.at_level(logging.INFO):
-        update_lut_files(
+        updater(
                 "gopher://dummy/location",
                 os.fspath(tmp_path / "stampfile"),
                 "true")
@@ -108,14 +114,17 @@ def test_update_lut_files_nominal(monkeypatch, tmp_path, caplog):
     assert exp1.exists() or exp2.exists()
 
 
-def test_update_lut_files_error(monkeypatch, tmp_path, caplog):
+@pytest.mark.parametrize(
+        "funcname", ["update_lut_files", "update_ancillary_files"])
+def test_update_error(monkeypatch, tmp_path, caplog, funcname):
     """Check that a failed LUT update is logged to stderr.
 
     And that the stampfile is NOT updated in this case."""
-    from cspp_runner.runner import update_lut_files
+    import cspp_runner.runner
+    updater = getattr(cspp_runner.runner, funcname)
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     with caplog.at_level(logging.ERROR):
-        update_lut_files(
+        updater(
                 "gother://dummy/location",
                 os.fspath(tmp_path / "stampfile"),
                 "false")
