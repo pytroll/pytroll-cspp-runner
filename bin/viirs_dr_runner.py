@@ -23,6 +23,7 @@ processing on direct readout RDR data (granules or full swaths)
 
 
 import argparse
+import ast
 import configparser
 import os
 import sys
@@ -98,13 +99,10 @@ def main():
     if args.log is not None:
         ndays = int(OPTIONS.get("log_rotation_days", 1))
         ncount = int(OPTIONS.get("log_rotation_backup", 7))
-        handler = handlers.TimedRotatingFileHandler(args.log,
-                                                    when='midnight',
-                                                    interval=ndays,
-                                                    backupCount=ncount,
-                                                    encoding=None,
-                                                    delay=False,
-                                                    utc=True)
+        handler = logging.handlers.TimedRotatingFileHandler(
+                args.log, when='midnight', interval=ndays,
+                backupCount=ncount, encoding=None,
+                delay=False, utc=True)
 
         handler.doRollover()
     else:
@@ -117,8 +115,6 @@ def main():
     logging.getLogger('').addHandler(handler)
     logging.getLogger('').setLevel(logging.DEBUG)
     logging.getLogger('posttroll').setLevel(logging.INFO)
-
-    LOG = logging.getLogger('viirs_dr_runner')
 
     npp_rolling_runner(
             thr_lut_files_age_days,
