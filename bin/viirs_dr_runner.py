@@ -92,6 +92,8 @@ def main():
     anc_update_stampfile_prefix = OPTIONS['anc_update_stampfile_prefix']
     url_download_trial_frequency_hours = OPTIONS[
         'url_download_trial_frequency_hours']
+    viirs_sdr_call = OPTIONS["viirs_sdr_call"]
+    viirs_sdr_options = ast.literal_eval(OPTIONS["viirs_sdr_options"])
 
     if args.log is not None:
         ndays = int(OPTIONS.get("log_rotation_days", 1))
@@ -132,6 +134,8 @@ def main():
             site,
             publish_topic,
             OPTIONS["level1_home"],
+            viirs_sdr_call,
+            viirs_sdr_options,
             int(OPTIONS.get("ncpus", 1))
             )
 

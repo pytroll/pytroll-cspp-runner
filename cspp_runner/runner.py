@@ -226,15 +226,14 @@ def update_ancillary_files(url_jpss_remote_anc_dir,
             timeout=timeout)
 
 
-def run_cspp(options, conf, path, *viirs_rdr_files):
+def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
     """Run CSPP on VIIRS RDR files"""
     from subprocess import Popen, PIPE
     import time
     import tempfile
 
-    viirs_sdr_call = options['viirs_sdr_call']
-    viirs_sdr_options = eval(conf.get(MODE, 'viirs_sdr_options'))
     LOG.info("viirs_sdr_options = " + str(viirs_sdr_options))
+    path = os.environ["PATH"]
     LOG.info("Path from environment: %s", str(path))
     if not isinstance(viirs_sdr_options, list):
         LOG.warning("No options will be passed to CSPP")
@@ -324,14 +323,14 @@ def publish_sdr(publisher, result_files, mda, site, publish_topic, **kwargs):
     publisher.send(msg)
 
 
-def spawn_cspp(current_granule, *glist, **kwargs):
+def spawn_cspp(current_granule, *glist, viirs_sdr_call, viirs_sdr_options, **kwargs):
     """Spawn a CSPP run on the set of RDR files given"""
 
     start_time = kwargs.get('start_time')
     platform_name = kwargs.get('platform_name')
 
     LOG.info("Start CSPP: RDR files = " + str(glist))
-    working_dir = run_cspp(*glist)
+    working_dir = run_cspp(viirs_sdr_call, viirs_sdr_options, *glist)
     LOG.info("CSPP SDR processing finished...")
     # Assume everything has gone well!
     new_result_files = get_sdr_files(working_dir, platform_name=platform_name)
@@ -406,7 +405,7 @@ class ViirsSdrProcessor:
     def pack_sdr_files(self, subd):
         return pack_sdr_files(self.result_files, self.sdr_home, subd)
 
-    def run(self, msg):
+    def run(self, msg, viirs_sdr_call, viirs_sdr_options):
         """Start the VIIRS SDR processing using CSPP on one rdr granule"""
 
         if msg:
@@ -419,8 +418,12 @@ class ViirsSdrProcessor:
             del self.glist[0]
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
-            self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                           [keeper] + self.glist))
+            self.cspp_results.append(
+                    self.pool.apply_async(
+                        spawn_cspp,
+                        [keeper] + self.glist,
+                        {"viirs_sdr_call": viirs_sdr_call,
+                         "viirs_sdr_options": viirs_sdr_options}))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
@@ -539,8 +542,12 @@ class ViirsSdrProcessor:
         LOG.info("Before call to spawn_cspp. Argument list = " +
                  str([keeper] + self.glist))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
-        self.cspp_results.append(self.pool.apply_async(spawn_cspp,
-                                                       [keeper] + self.glist))
+        self.cspp_results.append(
+                self.pool.apply_async(
+                    spawn_cspp,
+                    [keeper] + self.glist,
+                    {"viirs_sdr_call": viirs_sdr_call,
+                     "viirs_sdr_options": viirs_sdr_options}))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
@@ -562,6 +569,8 @@ def npp_rolling_runner(
         site,
         publish_topic,
         level1_home,
+        viirs_sdr_call,
+        viirs_sdr_options,
         ncpus=1,
         ):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
@@ -600,7 +609,8 @@ def npp_rolling_runner(
             while True:
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=300):
-                    status = viirs_proc.run(msg)
+                    status = viirs_proc.run(
+                            msg, viirs_sdr_call, viirs_sdr_options)
                     LOG.debug("Sent message to run: %s", str(msg))
                     LOG.debug("Status: %s", str(status))
                     if not status:

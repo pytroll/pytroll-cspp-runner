@@ -54,7 +54,7 @@ def test_run_fullswath(tmp_path, fakefile, caplog):
         csr.return_value = (os.fspath(fakefile), 42)
         vsp = ViirsSdrProcessor(1, tmp_path / "outdir")
         with caplog.at_level(logging.ERROR):
-            vsp.run(msg)
+            vsp.run(msg, "true", [])
         assert crT().apply_async.call_count == 1
         assert caplog.text == ""
 
