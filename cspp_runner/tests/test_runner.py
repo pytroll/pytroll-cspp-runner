@@ -100,8 +100,9 @@ def test_update__nominal(monkeypatch, tmp_path, caplog, funcname):
                 "gopher://dummy/location",
                 os.fspath(tmp_path / "stampfile"),
                 "true")
-    assert f"Download command: true -W {tmp_path / 'env'!s}" in caplog.text
-    assert "LUTs downloaded" in caplog.text
+    assert "Download command for" in caplog.text
+    assert f"true -W {tmp_path / 'env'!s}" in caplog.text
+    assert "downloaded" in caplog.text
     # I tried to use the technique at
     # https://stackoverflow.com/a/20503374/974555 to patch datetime.now, but
     # importing pandas fails if I do so, as pandas apparently also does some

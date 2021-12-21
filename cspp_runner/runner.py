@@ -141,28 +141,33 @@ def update_lut_files(url_jpss_remote_lut_dir,
     achieve the best possible SDR processing.
 
     """
-    import os
-    from datetime import datetime
-    from subprocess import Popen, PIPE
 
+    update_files(
+            url_jpss_remote_lut_dir,
+            lut_update_stampfile_prefix,
+            mirror_jpss_luts,
+            "LUT",
+            timeout=timeout)
+
+
+def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
+                 what,
+                 timeout=600):
     _check_environment("CSPP_WORKDIR")
     cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     my_env = os.environ.copy()
-    my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_lut_dir
+    my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_dir
 
-    LOG.info("Start downloading....")
-    # lftp -c "mirror --verbose --only-newer --parallel=2 $JPSS_REMOTE_ANC_DIR $CSPP_RT_SDR_LUTS"
-    # cmdstr = ('lftp -c "mirror --verbose --only-newer --parallel=2 ' +
-    #           URL_JPSS_REMOTE_ANC_DIR + ' ' + LUT_DIR + '"')
-    cmdstr = mirror_jpss_luts + ' -W {workdir}'.format(workdir=cspp_workdir)
-    LOG.info("Download command: " + cmdstr)
+    LOG.info(f"Start downloading {what:s}....")
+    cmdstr = mirror_jpss + ' -W {workdir}'.format(workdir=cspp_workdir)
+    LOG.info("Download command for {what:s}: " + cmdstr)
 
     try:
         proc = subprocess.run(cmdstr, shell=True, env=my_env, capture_output=True,
                               timeout=timeout, check=True)
     except subprocess.CalledProcessError as cpe:
         LOG.exception(
-                "Attempt to update LUT files failed with exit code "
+                f"Attempt to update {what:s} files failed with exit code "
                 f"{cpe.returncode:d}.")
         LOG.info(cpe.stdout)
         LOG.error(cpe.stderr)
@@ -172,17 +177,17 @@ def update_lut_files(url_jpss_remote_lut_dir,
 
         now = datetime.utcnow()
         timestamp = now.strftime('%Y%m%d%H%M')
-        filename = lut_update_stampfile_prefix + '.' + timestamp
+        filename = update_stampfile_prefix + '.' + timestamp
         try:
             fpt = open(filename, "w")
             fpt.write(timestamp)
         except OSError:
-            LOG.warning('Failed to write LUT-update time-stamp file')
+            LOG.warning(f'Failed to write {what:s}-update time-stamp file')
             return
         else:
             fpt.close()
 
-        LOG.info("LUTs downloaded. LUT-update timestamp file = " + filename)
+        LOG.info(f"{what:s} downloaded. {what:s}-update timestamp file = " + filename)
 
 
 def _check_environment(*args):
@@ -200,7 +205,8 @@ def _check_environment(*args):
 
 
 def update_ancillary_files(url_jpss_remote_anc_dir,
-                           anc_update_stampfile_prefix, mirror_jpss_ancillary):
+                           anc_update_stampfile_prefix, mirror_jpss_ancillary,
+                           timeout=600):
     """
     Function to update the dynamic ancillary data.
 
@@ -212,53 +218,12 @@ def update_ancillary_files(url_jpss_remote_anc_dir,
     option) and thus the files need to be updated outside the script.
 
     """
-    import os
-    from datetime import datetime
-    from subprocess import Popen, PIPE
-
-    my_env = os.environ.copy()
-    my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_anc_dir
-
-    LOG.info("Start downloading dynamic ancillary data " +
-             "(TLE and Polar Wander files)....")
-
-    cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
-    cmdstr = mirror_jpss_ancillary + ' -W {workdir}'.format(workdir=cspp_workdir)
-    LOG.info("Download command: " + cmdstr)
-
-    mirror_proc = Popen(cmdstr, shell=True, env=my_env,
-                        stderr=PIPE, stdout=PIPE)
-
-    while True:
-        line = mirror_proc.stdout.readline()
-        if not line:
-            break
-        LOG.info(line)
-
-    while True:
-        errline = mirror_proc.stderr.readline()
-        if not errline:
-            break
-        LOG.info(errline)
-
-    mirror_proc.poll()
-
-    now = datetime.utcnow()
-    timestamp = now.strftime('%Y%m%d%H%M')
-    filename = anc_update_stampfile_prefix + '.' + timestamp
-    try:
-        fpt = open(filename, "w")
-        fpt.write(timestamp)
-    except OSError:
-        LOG.warning('Failed to write ANC-update time-stamp file')
-        return
-    else:
-        fpt.close()
-
-    LOG.info("Ancillary data downloaded")
-    LOG.info("Time stamp file = " + filename)
-
-    return
+    update_files(
+            url_jpss_remote_anc_dir,
+            anc_update_stampfile_prefix,
+            mirror_jpss_ancillary,
+            "ANC",
+            timeout=timeout)
 
 
 def run_cspp(options, conf, path, *viirs_rdr_files):
