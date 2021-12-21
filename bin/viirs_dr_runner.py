@@ -80,9 +80,7 @@ def main():
 
     publish_topic = OPTIONS.get('publish_topic')
     subscribe_topics = OPTIONS.get('subscribe_topics').split(',')
-    for item in SUBSCRIBE_TOPICS:
-        if len(item) == 0:
-            SUBSCRIBE_TOPICS.remove(item)
+    subscribe_topics = [topic for topic in subscribe_topics if topic]
 
     site = OPTIONS.get('site')
 
