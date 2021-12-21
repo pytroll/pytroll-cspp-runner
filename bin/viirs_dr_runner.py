@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright (c) 2013 - 2021 cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
