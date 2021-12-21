@@ -15,6 +15,7 @@
 
 """Tests for runner module."""
 
+import datetime
 import logging
 import os
 import unittest.mock
@@ -66,7 +67,62 @@ def test_publish():
         publish_sdr(
                 publisher,
                 ["/foo/bar"],
-                {},
+                {"orbit_number": 42},
                 "wonderland",
                 "treasure/collected/complete",
                 orbit=42)
+
+
+def test_update_lut_files_missing_env(monkeypatch, tmp_path):
+    """Test updating the lookup table files fails when env missing."""
+    monkeypatch.delenv("CSPP_WORKDIR", raising=False)
+    from cspp_runner.runner import update_lut_files
+    # should raise exception when no workdir set
+    with pytest.raises(EnvironmentError):
+        update_lut_files(
+                "gopher://dummy/location",
+                os.fspath(tmp_path / "stampfile"),
+                "true")
+
+
+def test_update_lut_files_nominal(monkeypatch, tmp_path, caplog):
+    """Test update LUT files nominal case."""
+    from cspp_runner.runner import update_lut_files
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    with caplog.at_level(logging.INFO):
+        update_lut_files(
+                "gopher://dummy/location",
+                os.fspath(tmp_path / "stampfile"),
+                "true")
+    assert f"Download command: true -W {tmp_path / 'env'!s}" in caplog.text
+    assert "LUTs downloaded" in caplog.text
+    # I tried to use the technique at
+    # https://stackoverflow.com/a/20503374/974555 to patch datetime.now, but
+    # importing pandas fails if I do so, as pandas apparently also does some
+    # trickery.  Therefore instead hope that `now` was recent enough to fit in the
+    # previous minute at worst.
+    now = datetime.datetime.utcnow()
+    justnow = now - datetime.timedelta(seconds=5)
+    exp1 = tmp_path / f"stampfile.{now:%Y%m%d%H%M}"
+    exp2 = tmp_path / f"stampfile.{justnow:%Y%m%d%H%M}"
+    assert exp1.exists() or exp2.exists()
+
+
+def test_update_lut_files_error(monkeypatch, tmp_path, caplog):
+    """Check that a failed LUT update is logged to stderr.
+
+    And that the stampfile is NOT updated in this case."""
+    from cspp_runner.runner import update_lut_files
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    with caplog.at_level(logging.ERROR):
+        update_lut_files(
+                "gother://dummy/location",
+                os.fspath(tmp_path / "stampfile"),
+                "false")
+    assert "exit code 1" in caplog.text
+    now = datetime.datetime.utcnow()
+    justnow = now - datetime.timedelta(seconds=5)
+    exp1 = tmp_path / f"stampfile.{now:%Y%m%d%H%M}"
+    exp2 = tmp_path / f"stampfile.{justnow:%Y%m%d%H%M}"
+    assert not exp1.exists()
+    assert not exp2.exists()

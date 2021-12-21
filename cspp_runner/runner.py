@@ -25,6 +25,7 @@ import sys
 import socket
 import logging
 import netifaces
+import subprocess
 from glob import glob
 from datetime import datetime, timedelta
 from multiprocessing.pool import ThreadPool
@@ -47,7 +48,6 @@ PATH = os.environ.get('PATH', '')
 
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
 CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
-CSPP_WORKDIR = os.environ.get("CSPP_WORKDIR", '')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
 MODE = os.getenv("SMHI_MODE")
@@ -132,7 +132,8 @@ def check_lut_files(thr_days, url_download_trial_frequency_hours,
 
 
 def update_lut_files(url_jpss_remote_lut_dir,
-                     lut_update_stampfile_prefix, mirror_jpss_luts):
+                     lut_update_stampfile_prefix, mirror_jpss_luts,
+                     timeout=600):
     """
     Function to update the ancillary LUT files
 
@@ -144,6 +145,8 @@ def update_lut_files(url_jpss_remote_lut_dir,
     from datetime import datetime
     from subprocess import Popen, PIPE
 
+    _check_environment("CSPP_WORKDIR")
+    cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     my_env = os.environ.copy()
     my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_lut_dir
 
@@ -151,40 +154,49 @@ def update_lut_files(url_jpss_remote_lut_dir,
     # lftp -c "mirror --verbose --only-newer --parallel=2 $JPSS_REMOTE_ANC_DIR $CSPP_RT_SDR_LUTS"
     # cmdstr = ('lftp -c "mirror --verbose --only-newer --parallel=2 ' +
     #           URL_JPSS_REMOTE_ANC_DIR + ' ' + LUT_DIR + '"')
-    cmdstr = mirror_jpss_luts + ' -W {workdir}'.format(workdir=CSPP_WORKDIR)
+    cmdstr = mirror_jpss_luts + ' -W {workdir}'.format(workdir=cspp_workdir)
     LOG.info("Download command: " + cmdstr)
 
-    lftp_proc = Popen(cmdstr, shell=True, env=my_env, stderr=PIPE, stdout=PIPE)
-
-    while True:
-        line = lftp_proc.stdout.readline()
-        if not line:
-            break
-        LOG.info(line)
-
-    while True:
-        errline = lftp_proc.stderr.readline()
-        if not errline:
-            break
-        LOG.info(errline)
-
-    lftp_proc.poll()
-
-    now = datetime.utcnow()
-    timestamp = now.strftime('%Y%m%d%H%M')
-    filename = lut_update_stampfile_prefix + '.' + timestamp
     try:
-        fpt = open(filename, "w")
-        fpt.write(timestamp)
-    except OSError:
-        LOG.warning('Failed to write LUT-update time-stamp file')
-        return
+        proc = subprocess.run(cmdstr, shell=True, env=my_env, capture_output=True,
+                              timeout=timeout, check=True)
+    except subprocess.CalledProcessError as cpe:
+        LOG.exception(
+                "Attempt to update LUT files failed with exit code "
+                f"{cpe.returncode:d}.")
+        LOG.info(cpe.stdout)
+        LOG.error(cpe.stderr)
     else:
-        fpt.close()
+        LOG.info(proc.stdout)
+        LOG.error(proc.stderr)
 
-    LOG.info("LUTs downloaded. LUT-update timestamp file = " + filename)
+        now = datetime.utcnow()
+        timestamp = now.strftime('%Y%m%d%H%M')
+        filename = lut_update_stampfile_prefix + '.' + timestamp
+        try:
+            fpt = open(filename, "w")
+            fpt.write(timestamp)
+        except OSError:
+            LOG.warning('Failed to write LUT-update time-stamp file')
+            return
+        else:
+            fpt.close()
 
-    return
+        LOG.info("LUTs downloaded. LUT-update timestamp file = " + filename)
+
+
+def _check_environment(*args):
+    """Check that requested environment variables are set.
+
+    Raise EnvironmentError if they are not.
+    """
+    missing = set()
+    for arg in args:
+        if not arg in os.environ:
+            missing.add(arg)
+    if missing:
+        raise EnvironmentError("Missing environment variables: " +
+                               ", ".join(missing))
 
 
 def update_ancillary_files(url_jpss_remote_anc_dir,
@@ -210,7 +222,8 @@ def update_ancillary_files(url_jpss_remote_anc_dir,
     LOG.info("Start downloading dynamic ancillary data " +
              "(TLE and Polar Wander files)....")
 
-    cmdstr = mirror_jpss_ancillary + ' -W {workdir}'.format(workdir=CSPP_WORKDIR)
+    cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
+    cmdstr = mirror_jpss_ancillary + ' -W {workdir}'.format(workdir=cspp_workdir)
     LOG.info("Download command: " + cmdstr)
 
     mirror_proc = Popen(cmdstr, shell=True, env=my_env,
@@ -262,8 +275,9 @@ def run_cspp(options, conf, path, *viirs_rdr_files):
         LOG.warning("No options will be passed to CSPP")
         viirs_sdr_options = []
 
+    cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     try:
-        working_dir = tempfile.mkdtemp(dir=CSPP_WORKDIR)
+        working_dir = tempfile.mkdtemp(dir=cspp_workdir)
     except OSError:
         working_dir = tempfile.mkdtemp()
 
