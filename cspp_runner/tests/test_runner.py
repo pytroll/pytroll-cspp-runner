@@ -89,8 +89,8 @@ def test_update_missing_env(monkeypatch, tmp_path, funcname):
 
 
 @pytest.mark.parametrize(
-        "funcname,label", [("update_lut_files","LUT"),
-                           ("update_ancillary_files","ANC")])
+        "funcname,label", [("update_lut_files", "LUT"),
+                           ("update_ancillary_files", "ANC")])
 def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
     """Test update nominal case."""
     import cspp_runner.runner
@@ -137,3 +137,50 @@ def test_update_error(monkeypatch, tmp_path, caplog, funcname):
     exp2 = tmp_path / f"stampfile.{justnow:%Y%m%d%H%M}"
     assert not exp1.exists()
     assert not exp2.exists()
+
+
+def test_check_lut_files_virgin(tmp_path):
+    """Test check LUT files, virgin case."""
+    import cspp_runner.runner
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    res = cspp_runner.runner.check_lut_files(
+            5, 1, "prefix", os.fspath(empty_dir))
+    assert not res
+
+
+def test_check_lut_files_uptodate(tmp_path):
+    """Test check LUT files, everything up to date."""
+    import cspp_runner.runner
+    # create fake stamp files
+    now = datetime.datetime.now()
+    yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    yesteryear = datetime.datetime.now() - datetime.timedelta(days=400)
+    stamp = tmp_path / "stamp"
+    for dt in (yesteryear, yesterday, now):
+        fn = stamp.with_suffix(f".{dt:%Y%m%d%H%M}")
+        fn.touch()
+    res = cspp_runner.runner.check_lut_files(
+            5, 1, os.fspath(stamp), "irrelevant")
+    assert res
+
+
+def test_check_lut_files_outofdate(tmp_path, caplog):
+    """Test check LUT files, out of date case."""
+    import cspp_runner.runner
+    # create fake stamp file
+    yesteryear = datetime.datetime.now() - datetime.timedelta(days=400)
+    stamp = tmp_path / "stamp"
+    fn = stamp.with_suffix(f".{yesteryear:%Y%m%d%H%M}")
+    fn.touch()
+    # create fake LUT from yesteryear
+    lut_dir = tmp_path / "lut"
+    lut_dir.mkdir()
+    lutfile = lut_dir / "dummy"
+    lutfile.touch()
+    os.utime(lutfile, (yesteryear.timestamp(),)*2)
+    res = cspp_runner.runner.check_lut_files(
+            5, 1,
+            os.fspath(stamp),
+            os.fspath(lut_dir))
+    assert not res
