@@ -160,7 +160,7 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
 
     LOG.info(f"Start downloading {what:s}....")
     cmdstr = mirror_jpss + ' -W {workdir}'.format(workdir=cspp_workdir)
-    LOG.info("Download command for {what:s}: " + cmdstr)
+    LOG.info(f"Download command for {what:s}: " + cmdstr)
 
     try:
         proc = subprocess.run(cmdstr, shell=True, env=my_env, capture_output=True,

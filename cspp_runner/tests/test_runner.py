@@ -89,8 +89,9 @@ def test_update_missing_env(monkeypatch, tmp_path, funcname):
 
 
 @pytest.mark.parametrize(
-        "funcname", ["update_lut_files", "update_ancillary_files"])
-def test_update__nominal(monkeypatch, tmp_path, caplog, funcname):
+        "funcname,label", [("update_lut_files","LUT"),
+                           ("update_ancillary_files","ANC")])
+def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
     """Test update nominal case."""
     import cspp_runner.runner
     updater = getattr(cspp_runner.runner, funcname)
@@ -100,7 +101,7 @@ def test_update__nominal(monkeypatch, tmp_path, caplog, funcname):
                 "gopher://dummy/location",
                 os.fspath(tmp_path / "stampfile"),
                 "true")
-    assert "Download command for" in caplog.text
+    assert f"Download command for {label:s}" in caplog.text
     assert f"true -W {tmp_path / 'env'!s}" in caplog.text
     assert "downloaded" in caplog.text
     # I tried to use the technique at
