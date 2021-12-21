@@ -57,7 +57,7 @@ log_rotation_backup = 10
 mirror_jpss_luts = sdr_luts.sh
 
 # script to update ancillary data (must be in PATH)
-mirror_jpss_ancillary = sdl_ancillary.sh
+mirror_jpss_ancillary = sdr_ancillary.sh
 
 # ???
 granule_time_tolerance = 10
