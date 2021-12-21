@@ -78,13 +78,13 @@ def main():
     for option, value in CONF.items(args.config_section, raw=True):
         OPTIONS[option] = value
 
-    PUBLISH_TOPIC = OPTIONS.get('publish_topic')
-    SUBSCRIBE_TOPICS = OPTIONS.get('subscribe_topics').split(',')
+    publish_topic = OPTIONS.get('publish_topic')
+    subscribe_topics = OPTIONS.get('subscribe_topics').split(',')
     for item in SUBSCRIBE_TOPICS:
         if len(item) == 0:
             SUBSCRIBE_TOPICS.remove(item)
 
-    SITE = OPTIONS.get('site')
+    site = OPTIONS.get('site')
 
     thr_lut_files_age_days = OPTIONS.get('threshold_lut_files_age_days', 14)
     url_jpss_remote_lut_dir = OPTIONS['url_jpss_remote_lut_dir']
@@ -130,9 +130,9 @@ def main():
             url_jpss_remote_anc_dir,
             anc_update_stampfile_prefix,
             OPTIONS["mirror_jpss_ancillary"],
-            OPTIONS["subscribe_topics"],
-            OPTIONS["site"],
-            OPTIONS["publish_topic"],
+            subscribe_topics,
+            site,
+            publish_topic,
             OPTIONS["level1_home"],
             int(OPTIONS.get("ncpus", 1))
             )
