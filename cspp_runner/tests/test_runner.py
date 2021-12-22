@@ -42,12 +42,40 @@ def fakemessage(fakefile):
             "pytroll@oflks333.dwd.de 2021-12-20T15:01:02.780614 v1.01 "
             'application/json {"path": "", "start_time": '
             '"2021-12-17T09:59:00.300000", "end_time": '
-            '"2021-12-17T10:11:48.400000", "orbit": 1, "processing_time": '
+            '"2021-12-17T10:11:48.400000", "orbit_number": 1, "processing_time": '
             '"2021-12-17T10:12:06.466000", "uri": '
             f'"{fakefile!s}", "uid": '
             '"RNSCA-RVIRS_npp_d20211217_t0959003_e1011484_b00001_'
             'c20211217101206466000_all-_dev.h5", "sensor": ["viirs"], '
             '"platform_name": "Suomi-NPP"}')
+
+
+@pytest.fixture
+def fake_result_names(tmp_path):
+    p = tmp_path / "results"
+    all = []
+    for f in [
+        "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
+        "SVM12_j01_d20211221_t1436067_e1437312_b21200_c20211221145100921548_cspp_dev.h5",
+        "SVM10_j01_d20211221_t1436067_e1437312_b21200_c20211221145100419360_cspp_dev.h5",
+        "SVM02_j01_d20211221_t1436067_e1437312_b21200_c20211221145058798219_cspp_dev.h5",
+        "SVM09_j01_d20211221_t1436067_e1437312_b21200_c20211221145100251266_cspp_dev.h5"]:
+        new = p / f
+        all.append(new)
+    return all
+
+
+@pytest.fixture
+def fake_results(tmp_path, fake_result_names):
+    p = tmp_path / "results"
+    p.mkdir(parents=True, exist_ok=True)
+    created = []
+    for f in fake_result_names:
+        new = p / f
+        new.touch()
+        created.append(os.fspath(new))
+    return created
+
 
 def test_run_fullswath(tmp_path, fakefile, fakemessage, caplog):
     """Test the runner with a single fullswath file."""
@@ -63,17 +91,14 @@ def test_run_fullswath(tmp_path, fakefile, fakemessage, caplog):
         assert caplog.text == ""
 
 
-def test_publish():
+def test_publish(fake_results):
     """Test publishing SDR."""
     from cspp_runner.runner import publish_sdr
     from posttroll.publisher import Publish
     with Publish("bolungarvík", 0) as publisher:
         publish_sdr(
                 publisher,
-		["GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
-                "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
-                "GMTCO_j01_d20211221_t1437324_e1438552_b21200_c20211221144934741554_cspp_dev.h5",
-                "GMTCO_j01_d20211221_t1437324_e1438552_b21200_c20211221144934741554_cspp_dev.h5"],
+		fake_results,
                 {"orbit_number": 21200},
                 "wonderland",
                 "treasure/collected/complete",
@@ -199,19 +224,14 @@ def test_run_cspp():
     cspp_runner.runner.run_cspp("true", [])
 
 
-def test_spawn_cspp_nominal(tmp_path, caplog):
+def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names):
     """Test spawning CSPP successfully."""
     import cspp_runner.runner
     def fake_run_cspp(call, args, *rdrs):
         p = tmp_path / "working_dir"
         p.mkdir()
-        for f in [
-            "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
-            "SVM12_j01_d20211221_t1436067_e1437312_b21200_c20211221145100921548_cspp_dev.h5",
-            "SVM10_j01_d20211221_t1436067_e1437312_b21200_c20211221145100419360_cspp_dev.h5",
-            "SVM02_j01_d20211221_t1436067_e1437312_b21200_c20211221145058798219_cspp_dev.h5",
-            "SVM09_j01_d20211221_t1436067_e1437312_b21200_c20211221145100251266_cspp_dev.h5"]:
-            (p / f).touch()
+        for f in fake_result_names:
+            (p / f.name).touch()
         return os.fspath(p)
     with unittest.mock.patch("cspp_runner.runner.run_cspp") as crr:
         crr.side_effect = fake_run_cspp
@@ -241,7 +261,8 @@ def test_spawn_cspp_failure(tmp_path, caplog):
     assert "CSPP probably failed!" in caplog.text
 
 
-def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage):
+def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
+                        fake_results):
     """Test NPP rolling runner."""
     from cspp_runner.runner import npp_rolling_runner
 
@@ -251,13 +272,21 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage):
     def handler(signum, frame):
         raise TimeOut()
 
+    fake_workdir = tmp_path / "workdir"
+    def fake_spawn_cspp(current_granule, *glist, viirs_sdr_call,
+                        viirs_sdr_options):
+        fake_workdir.mkdir(exist_ok=True, parents=True)
+        return (os.fspath(fake_workdir), fake_results)
+
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(fake_workdir))
     signal.signal(signal.SIGALRM, handler)
-    signal.alarm(1)
-    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "workdir"))
+    signal.alarm(2)
     with unittest.mock.patch("posttroll.subscriber.Subscribe") as psS, \
          unittest.mock.patch("cspp_runner.runner.Publish") as crP, \
+         unittest.mock.patch("cspp_runner.runner.spawn_cspp", new=fake_spawn_cspp) as crs, \
          caplog.at_level(logging.DEBUG):
         psS.return_value.__enter__.return_value.recv.return_value = [fakemessage]
+        crs.return_value = (os.fspath(fake_workdir), fake_results)
         try:
             npp_rolling_runner(7, 24,
                                os.fspath(tmp_path / "stamp_lut"),

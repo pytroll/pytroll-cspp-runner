@@ -135,7 +135,7 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
                 file=str(newfilename),
                 time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
 
-        retvl.append(newfilename)
+        retvl.append(os.fspath(newfilename))
 
     return retvl
 

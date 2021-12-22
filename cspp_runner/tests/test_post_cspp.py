@@ -29,9 +29,11 @@ def test_pack_sdr_files(tmp_path, caplog):
     dest = tmp_path / "path" / "to" / "sdr_dir"
 
     with caplog.at_level(logging.DEBUG):
-        pack_sdr_files(
+        newnames = pack_sdr_files(
             [p],
             os.fspath(dest),
             "subdir")
     assert "Number of SDR files: 1" in caplog.text
     assert (dest / "subdir" / "sdr.h5").exists()
+    assert len(newnames) == 1
+    assert isinstance(newnames[0], str)

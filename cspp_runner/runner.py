@@ -660,5 +660,3 @@ def npp_rolling_runner(
                          "Start url fetch...")
                 update_ancillary_files(url_jpss_remote_anc_dir,
                                        anc_update_stampfile_prefix, mirror_jpss_ancillary)
-
-    return
