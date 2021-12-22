@@ -55,11 +55,11 @@ def fake_result_names(tmp_path):
     p = tmp_path / "results"
     all = []
     for f in [
-        "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
-        "SVM12_j01_d20211221_t1436067_e1437312_b21200_c20211221145100921548_cspp_dev.h5",
-        "SVM10_j01_d20211221_t1436067_e1437312_b21200_c20211221145100419360_cspp_dev.h5",
-        "SVM02_j01_d20211221_t1436067_e1437312_b21200_c20211221145058798219_cspp_dev.h5",
-        "SVM09_j01_d20211221_t1436067_e1437312_b21200_c20211221145100251266_cspp_dev.h5"]:
+            "GMTCO_j01_d20211221_t1436067_e1437312_b21200_c20211221144949626416_cspp_dev.h5",
+            "SVM12_j01_d20211221_t1436067_e1437312_b21200_c20211221145100921548_cspp_dev.h5",
+            "SVM10_j01_d20211221_t1436067_e1437312_b21200_c20211221145100419360_cspp_dev.h5",
+            "SVM02_j01_d20211221_t1436067_e1437312_b21200_c20211221145058798219_cspp_dev.h5",
+            "SVM09_j01_d20211221_t1436067_e1437312_b21200_c20211221145100251266_cspp_dev.h5"]:
         new = p / f
         all.append(new)
     return all
@@ -94,7 +94,6 @@ def test_run_fullswath(tmp_path, fakefile, fakemessage, caplog):
 def test_publish(fake_results):
     """Test publishing SDR."""
     from cspp_runner.runner import publish_sdr
-    from posttroll.publisher import Publish
 
     class FakePublisher:
         def __init__(self):
@@ -246,6 +245,7 @@ def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names, monkeypatch):
     import cspp_runner.runner
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     (tmp_path / "env").mkdir(parents=True)
+
     def fake_run_cspp(call, args, *rdrs):
         p = tmp_path / "working_dir"
         p.mkdir()
@@ -256,7 +256,8 @@ def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names, monkeypatch):
         crr.side_effect = fake_run_cspp
         with caplog.at_level(logging.DEBUG):
             (wd, rf) = cspp_runner.runner.spawn_cspp(
-                os.fspath(tmp_path /
+                os.fspath(
+                    tmp_path /
                     "RNSCA-RVIRS_j01_d20211221_t1436057_e1444378_b21199_c20211221144433345000_all-_dev.h5"),
                 viirs_sdr_call="touch",
                 viirs_sdr_options=[],
@@ -294,6 +295,7 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
         raise TimeOut()
 
     fake_workdir = tmp_path / "workdir"
+
     def fake_spawn_cspp(current_granule, *glist, viirs_sdr_call,
                         viirs_sdr_options):
         fake_workdir.mkdir(exist_ok=True, parents=True)
@@ -303,7 +305,7 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
     signal.signal(signal.SIGALRM, handler)
     signal.alarm(2)
     with unittest.mock.patch("posttroll.subscriber.Subscribe") as psS, \
-         unittest.mock.patch("cspp_runner.runner.Publish") as crP, \
+         unittest.mock.patch("cspp_runner.runner.Publish"), \
          unittest.mock.patch("cspp_runner.runner.spawn_cspp", new=fake_spawn_cspp) as crs, \
          caplog.at_level(logging.DEBUG):
         psS.return_value.__enter__.return_value.recv.return_value = [fakemessage]
@@ -320,7 +322,7 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                                "/product/available/sdr", tmp_path / "sdr/results",
                                "true", [], 2)
         except TimeOut:
-            pass # probably all is fine
+            pass  # probably all is fine
         else:
             assert False  # should never get here
     assert "Dynamic ancillary data will be updated" in caplog.text

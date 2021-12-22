@@ -21,7 +21,6 @@ processing on direct readout RDR data (granules or full swaths)
 
 
 import os
-import sys
 import socket
 import logging
 import multiprocessing
@@ -206,7 +205,7 @@ def _check_environment(*args):
     """
     missing = set()
     for arg in args:
-        if not arg in os.environ:
+        if arg not in os.environ:
             missing.add(arg)
     if missing:
         raise EnvironmentError("Missing environment variables: " +
@@ -260,8 +259,8 @@ def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
     LOG.info("Popen call arguments: " + str(cmdlist))
     viirs_sdr_proc = subprocess.Popen(
             cmdlist, cwd=working_dir,
-           stderr=subprocess.PIPE,
-           stdout=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE)
     while True:
         line = viirs_sdr_proc.stdout.readline()
         if not line:
@@ -501,10 +500,11 @@ class ViirsSdrProcessor:
         except IOError:
             LOG.exception(
                     'Failed to fix orbit number in RDR file = ' +
-                     str(urlobj.path))
+                    str(urlobj.path))
         except cspp_runner.orbitno.NoTleFile:
-            LOG.exception('Failed to fix orbit number in RDR file = ' +
-                      str(urlobj.path))
+            LOG.exception(
+                    'Failed to fix orbit number in RDR file = ' +
+                    str(urlobj.path))
             LOG.error('No TLE file...')
         if orbnum:
             self.orbit_number = orbnum

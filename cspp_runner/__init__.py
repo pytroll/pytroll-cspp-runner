@@ -94,6 +94,7 @@ def get_datetime_from_filename(filename):
     """
     return get_sdr_times(filename)[0]
 
+
 def get_sdr_times(filename):
     """Get the start and end times from the SDR file name."""
     basename = os.path.basename(filename)

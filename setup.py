@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 - 2020 Pytroll
-
-# Author(s):
-
-#   Martin Raspaud <martin.raspaud@smhi.se>
+# Copyright (c) 2013 - 2021 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,9 +19,7 @@
 """Setup for cspp-runner.
 """
 
-from setuptools import setup, find_packages
-import os.path
-
+from setuptools import setup
 
 try:
     # HACK: https://github.com/pypa/setuptools_scm/issues/190#issuecomment-351181286

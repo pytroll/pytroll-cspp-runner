@@ -27,7 +27,9 @@ def cleanup_cspp_workdir(workdir):
     """Clean up the CSPP working dir after processing"""
 
     filelist = glob('%s/*' % workdir)
-    dummy = [os.remove(s) for s in filelist if os.path.isfile(s)]
+    for s in filelist:
+        if os.path.isfile(s):
+            os.remove(s)
     filelist = glob('%s/*' % workdir)
     LOG.info(
         "Number of items left after cleaning working dir = " + str(len(filelist)))
