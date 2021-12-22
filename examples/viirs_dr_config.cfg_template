@@ -6,7 +6,7 @@ site = 'nrk'
 # is completed.
 level1_home = /san1/polar_out/direct_readout/viirs/sdr
 
-# ???
+# (unused?)
 working_dir = /san1/wrk_cspp
 
 # CSPP-viirs batch script and parameters:
@@ -59,7 +59,9 @@ mirror_jpss_luts = sdr_luts.sh
 # script to update ancillary data (must be in PATH)
 mirror_jpss_ancillary = sdr_ancillary.sh
 
-# ???
+# Time in seconds for SDR granule to be considering belonging to RDR granule.
+# Relevant if RDR consists of short granules.  Not relevant if RDR has a single file
+# for a whole overpass.
 granule_time_tolerance = 10
 
 [utv]
