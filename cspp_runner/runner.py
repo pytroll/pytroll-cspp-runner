@@ -412,7 +412,8 @@ class ViirsSdrProcessor:
     def pack_sdr_files(self, subd):
         return pack_sdr_files(self.result_files, self.sdr_home, subd)
 
-    def run(self, msg, viirs_sdr_call, viirs_sdr_options):
+    def run(self, msg, viirs_sdr_call, viirs_sdr_options,
+            granule_time_tolerance=10):
         """Start the VIIRS SDR processing using CSPP on one rdr granule"""
 
         if msg:
@@ -430,7 +431,8 @@ class ViirsSdrProcessor:
                         spawn_cspp,
                         [keeper] + self.glist,
                         {"viirs_sdr_call": viirs_sdr_call,
-                         "viirs_sdr_options": viirs_sdr_options}))
+                         "viirs_sdr_options": viirs_sdr_options,
+                         "granule_time_tolerance": granule_time_tolerance}))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
@@ -579,6 +581,7 @@ def npp_rolling_runner(
         level1_home,
         viirs_sdr_call,
         viirs_sdr_options,
+        granule_time_tolerance=10,
         ncpus=1,
         ):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
@@ -618,7 +621,8 @@ def npp_rolling_runner(
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=300):
                     status = viirs_proc.run(
-                            msg, viirs_sdr_call, viirs_sdr_options)
+                            msg, viirs_sdr_call, viirs_sdr_options,
+                            granule_time_tolerance)
                     LOG.debug("Sent message to run: %s", str(msg))
                     LOG.debug("Status: %s", str(status))
                     if not status:

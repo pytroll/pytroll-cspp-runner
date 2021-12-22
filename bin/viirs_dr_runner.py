@@ -133,6 +133,7 @@ def main():
             OPTIONS["level1_home"],
             viirs_sdr_call,
             viirs_sdr_options,
+            int(OPTIONS.get("granule_time_tolerance", 10)),
             int(OPTIONS.get("ncpus", 1))
             )
 
