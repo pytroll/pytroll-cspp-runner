@@ -144,12 +144,13 @@ def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
     updater = getattr(cspp_runner.runner, funcname)
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     with caplog.at_level(logging.INFO):
-        updater(
-                "gopher://dummy/location",
+        updater("gopher://dummy/location",
                 os.fspath(tmp_path / "stampfile"),
-                "true")
+                "echo")
     assert f"Download command for {label:s}" in caplog.text
-    assert f"true -W {tmp_path / 'env'!s}" in caplog.text
+    assert f"echo -W {tmp_path / 'env'!s}" in caplog.text
+    assert caplog.text.split("\n")[2].endswith(
+            f"-W {tmp_path / 'env'!s}")
     assert "downloaded" in caplog.text
     # I tried to use the technique at
     # https://stackoverflow.com/a/20503374/974555 to patch datetime.now, but

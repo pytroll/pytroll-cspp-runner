@@ -165,13 +165,13 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         LOG.exception(
                 f"Attempt to update {what:s} files failed with exit code "
                 f"{cpe.returncode:d}.")
-        LOG.info(cpe.stdout)
-        LOG.error(cpe.stderr)
+        LOG.info(cpe.stdout.decode("utf-8").strip())
+        LOG.error(cpe.stderr.decode("utf-8").strip())
     else:
         if proc.stdout:
-            LOG.info(proc.stdout)
+            LOG.info(proc.stdout.decode("utf-8").strip())
         if proc.stderr:
-            LOG.error(proc.stderr)
+            LOG.error(proc.stderr.decode("utf-8").strip())
 
         now = datetime.utcnow()
         timestamp = now.strftime('%Y%m%d%H%M')
