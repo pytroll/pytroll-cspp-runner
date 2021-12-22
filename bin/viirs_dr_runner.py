@@ -61,6 +61,8 @@ def parse_args():
                         type=str,
                         default=None,
                         help="The file to log to (stdout per default).")
+    parser.add_argument("-p", "--publisher", type=str,
+                        help="File with publisher config (YAML).")
 
     return parser.parse_args()
 
@@ -134,7 +136,8 @@ def main():
             viirs_sdr_call,
             viirs_sdr_options,
             int(OPTIONS.get("granule_time_tolerance", 10)),
-            int(OPTIONS.get("ncpus", 1))
+            int(OPTIONS.get("ncpus", 1)),
+            publisher_config=args.publisher,
             )
 
 
