@@ -95,14 +95,29 @@ def test_publish(fake_results):
     """Test publishing SDR."""
     from cspp_runner.runner import publish_sdr
     from posttroll.publisher import Publish
-    with Publish("bolungarvík", 0) as publisher:
-        publish_sdr(
-                publisher,
-		fake_results,
-                {"orbit_number": 21200},
-                "wonderland",
-                "treasure/collected/complete",
-                orbit=42)
+
+    class FakePublisher:
+        def __init__(self):
+            self.messages = []
+
+        def send(self, msg):
+            self.messages.append(msg)
+
+    fake_publisher = FakePublisher()
+
+    publish_sdr(
+            fake_publisher,
+            fake_results,
+            {"orbit_number": 21200},
+            "wonderland",
+            "test",
+            "treasure/collected/complete",
+            orbit=42)
+    assert len(fake_publisher.messages) == 1
+    msg = fake_publisher.messages[0]
+    assert msg.startswith(
+            "pytroll://treasure/collected/complete/SDR/1B/wonderland"
+            "/test/polar/direct_readout dataset")
 
 
 @pytest.mark.parametrize(
@@ -295,6 +310,7 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                                "gopher://example.org/ancs",
                                os.fspath(tmp_path / "stamp_anc"),
                                "true", "/file/available/rdr", "earth",
+                               "test",
                                "/product/available/sdr", tmp_path / "sdr/results",
                                "true", [], 2)
         except TimeOut:

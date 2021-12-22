@@ -50,10 +50,6 @@ CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
 CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
-MODE = os.getenv("SMHI_MODE")
-if MODE is None:
-    MODE = "dev"
-
 VIIRS_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
 
 #: Default time format
@@ -276,7 +272,8 @@ def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
     return working_dir
 
 
-def publish_sdr(publisher, result_files, mda, site, publish_topic, **kwargs):
+def publish_sdr(publisher, result_files, mda, site, mode,
+                publish_topic, **kwargs):
     """Publish the messages that SDR files are ready
     """
     if not result_files:
@@ -317,7 +314,7 @@ def publish_sdr(publisher, result_files, mda, site, publish_topic, **kwargs):
                             to_send['format'],
                             to_send['data_processing_level'],
                             site,
-                            MODE,
+                            mode,
                             'polar',
                             'direct_readout')),
                   "dataset", to_send).encode()
@@ -569,6 +566,7 @@ def npp_rolling_runner(
         mirror_jpss_ancillary,
         subscribe_topics,
         site,
+        mode,
         publish_topic,
         level1_home,
         viirs_sdr_call,
@@ -636,7 +634,7 @@ def npp_rolling_runner(
                     cleanup_cspp_workdir(working_dir)
                     publish_sdr(publisher, sdr_files,
                                 viirs_proc.message_data,
-                                site, publish_topic,
+                                site, mode, publish_topic,
                                 orbit=viirs_proc.orbit_number)
 
                 make_okay_files(viirs_proc.sdr_home, subd)

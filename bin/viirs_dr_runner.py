@@ -128,6 +128,7 @@ def main():
             OPTIONS["mirror_jpss_ancillary"],
             subscribe_topics,
             site,
+            OPTIONS["mode"],
             publish_topic,
             OPTIONS["level1_home"],
             viirs_sdr_call,
