@@ -24,10 +24,14 @@ import os
 import sys
 import socket
 import logging
+import multiprocessing
 import netifaces
 import pathlib
 import shutil
+import stat
 import subprocess
+import tempfile
+import time
 from glob import glob
 from datetime import datetime, timedelta
 from multiprocessing.pool import ThreadPool
@@ -82,7 +86,6 @@ def check_lut_files(thr_days, url_download_trial_frequency_hours,
     how old the latest file is, and hope that this is sufficient.
 
     """
-    import stat
 
     now = datetime.utcnow()
 
@@ -234,9 +237,6 @@ def update_ancillary_files(url_jpss_remote_anc_dir,
 
 def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
     """Run CSPP on VIIRS RDR files"""
-    from subprocess import Popen, PIPE
-    import time
-    import tempfile
 
     LOG.info("viirs_sdr_options = " + str(viirs_sdr_options))
     path = os.environ["PATH"]
@@ -258,9 +258,10 @@ def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
     t0_clock = time.process_time()
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
-    viirs_sdr_proc = Popen(cmdlist,
-                           cwd=working_dir,
-                           stderr=PIPE, stdout=PIPE)
+    viirs_sdr_proc = subprocess.Popen(
+            cmdlist, cwd=working_dir,
+           stderr=subprocess.PIPE,
+           stdout=subprocess.PIPE)
     while True:
         line = viirs_sdr_proc.stdout.readline()
         if not line:
@@ -498,17 +499,13 @@ class ViirsSdrProcessor:
         try:
             rdr_filename, orbnum = fix_rdrfile(rdr_filename)
         except IOError:
-            LOG.error('Failed to fix orbit number in RDR file = ' +
-                      str(urlobj.path))
-            import traceback
-            traceback.print_exc(file=sys.stderr)
+            LOG.exception(
+                    'Failed to fix orbit number in RDR file = ' +
+                     str(urlobj.path))
         except cspp_runner.orbitno.NoTleFile:
-            LOG.error('Failed to fix orbit number in RDR file = ' +
+            LOG.exception('Failed to fix orbit number in RDR file = ' +
                       str(urlobj.path))
             LOG.error('No TLE file...')
-            import traceback
-            traceback.print_exc(file=sys.stderr)
-
         if orbnum:
             self.orbit_number = orbnum
         LOG.info("Orbit number = " + str(self.orbit_number))
@@ -585,7 +582,6 @@ def npp_rolling_runner(
         ncpus=1,
         ):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
-    from multiprocessing import cpu_count
 
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
     LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(thr_lut_files_age_days))
@@ -608,7 +604,7 @@ def npp_rolling_runner(
     update_ancillary_files(url_jpss_remote_anc_dir,
                            anc_update_stampfile_prefix, mirror_jpss_ancillary)
 
-    ncpus_available = cpu_count()
+    ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
     viirs_proc = ViirsSdrProcessor(ncpus, level1_home)
