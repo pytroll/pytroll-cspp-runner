@@ -233,15 +233,19 @@ def test_check_lut_files_outofdate(tmp_path, caplog):
     assert not res
 
 
-def test_run_cspp():
+def test_run_cspp(monkeypatch, tmp_path):
     """Test running CSPP."""
     import cspp_runner.runner
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    (tmp_path / "env").mkdir(parents=True)
     cspp_runner.runner.run_cspp("true", [])
 
 
-def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names):
+def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names, monkeypatch):
     """Test spawning CSPP successfully."""
     import cspp_runner.runner
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    (tmp_path / "env").mkdir(parents=True)
     def fake_run_cspp(call, args, *rdrs):
         p = tmp_path / "working_dir"
         p.mkdir()
@@ -263,9 +267,11 @@ def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names):
     assert len(rf) == 5
 
 
-def test_spawn_cspp_failure(tmp_path, caplog):
+def test_spawn_cspp_failure(monkeypatch, tmp_path, caplog):
     """Test spawning CSPP unsuccessfully."""
     import cspp_runner.runner
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    (tmp_path / "env").mkdir(parents=True)
     with caplog.at_level(logging.WARNING):
         (wd, rf) = cspp_runner.runner.spawn_cspp(
             *[os.fspath(tmp_path / f"file{i:d})")
