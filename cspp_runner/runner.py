@@ -25,6 +25,8 @@ import sys
 import socket
 import logging
 import netifaces
+import pathlib
+import shutil
 import subprocess
 from glob import glob
 from datetime import datetime, timedelta
@@ -151,28 +153,34 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
                  timeout=600):
     _check_environment("CSPP_WORKDIR")
     cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
+    pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
     my_env = os.environ.copy()
     my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_dir
 
     LOG.info(f"Start downloading {what:s}....")
-    cmdstr = mirror_jpss + ' -W {workdir}'.format(workdir=cspp_workdir)
-    LOG.info(f"Download command for {what:s}: " + cmdstr)
+    cmd = [shutil.which(mirror_jpss), "-W", cspp_workdir]
+    LOG.info(f"Download command for {what:s}: {cmd!s}")
+
+    proc = subprocess.Popen(
+            cmd, shell=False, env=my_env,
+            cwd=cspp_workdir,
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    while (line := proc.stdout.readline()):
+        LOG.info(line.decode("utf-8").strip('\n'))
+    while (line := proc.stderr.readline()):
+        LOG.error(line.decode("utf-8").strip('\n'))
 
     try:
-        proc = subprocess.run(cmdstr, shell=True, env=my_env, capture_output=True,
-                              timeout=timeout, check=True)
-    except subprocess.CalledProcessError as cpe:
+        returncode = proc.wait(timeout)
+    except subprocess.TimeoutExpired:
+        LOG.exception(f"Attempt to update {what:s} files timed out. ")
+
+    if returncode != 0:
         LOG.exception(
                 f"Attempt to update {what:s} files failed with exit code "
-                f"{cpe.returncode:d}.")
-        LOG.info(cpe.stdout.decode("utf-8").strip())
-        LOG.error(cpe.stderr.decode("utf-8").strip())
+                f"{returncode:d}.")
     else:
-        if proc.stdout:
-            LOG.info(proc.stdout.decode("utf-8").strip())
-        if proc.stderr:
-            LOG.error(proc.stderr.decode("utf-8").strip())
-
         now = datetime.utcnow()
         timestamp = now.strftime('%Y%m%d%H%M')
         filename = update_stampfile_prefix + '.' + timestamp

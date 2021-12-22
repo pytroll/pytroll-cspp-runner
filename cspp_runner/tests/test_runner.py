@@ -148,7 +148,6 @@ def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
                 os.fspath(tmp_path / "stampfile"),
                 "echo")
     assert f"Download command for {label:s}" in caplog.text
-    assert f"echo -W {tmp_path / 'env'!s}" in caplog.text
     assert caplog.text.split("\n")[2].endswith(
             f"-W {tmp_path / 'env'!s}")
     assert "downloaded" in caplog.text
