@@ -61,9 +61,6 @@ class NPPStamp(object):
         return "%s_d%s_t%s_e%s_b%05d" % (self.platform, date, start, end,
                                          self.orbit_number)
 
-    def __cmp__(self, other):
-        return cmp(str(self), str(other))
-
 
 def get_npp_stamp(filename):
     """A unique stamp for a granule.
