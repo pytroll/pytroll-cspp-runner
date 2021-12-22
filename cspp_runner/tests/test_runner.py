@@ -18,6 +18,7 @@
 import datetime
 import logging
 import os
+import signal
 import unittest.mock
 
 import posttroll.message
@@ -34,10 +35,9 @@ def fakefile(tmp_path):
     return p
 
 
-def test_run_fullswath(tmp_path, fakefile, caplog):
-    """Test the runner with a single fullswath file."""
-    from cspp_runner.runner import ViirsSdrProcessor
-    msg = posttroll.message.Message(
+@pytest.fixture
+def fakemessage(fakefile):
+    return posttroll.message.Message(
             rawstr="pytroll://file/snpp/viirs/direktempfang file "
             "pytroll@oflks333.dwd.de 2021-12-20T15:01:02.780614 v1.01 "
             'application/json {"path": "", "start_time": '
@@ -49,12 +49,16 @@ def test_run_fullswath(tmp_path, fakefile, caplog):
             'c20211217101206466000_all-_dev.h5", "sensor": ["viirs"], '
             '"platform_name": "Suomi-NPP"}')
 
+def test_run_fullswath(tmp_path, fakefile, fakemessage, caplog):
+    """Test the runner with a single fullswath file."""
+    from cspp_runner.runner import ViirsSdrProcessor
+
     with unittest.mock.patch("cspp_runner.runner.ThreadPool") as crT, \
          unittest.mock.patch("cspp_runner.runner.fix_rdrfile") as csr:
         csr.return_value = (os.fspath(fakefile), 42)
         vsp = ViirsSdrProcessor(1, tmp_path / "outdir")
         with caplog.at_level(logging.ERROR):
-            vsp.run(msg, "true", [])
+            vsp.run(fakemessage, "true", [])
         assert crT().apply_async.call_count == 1
         assert caplog.text == ""
 
@@ -235,3 +239,37 @@ def test_spawn_cspp_failure(tmp_path, caplog):
             viirs_sdr_options=[])
     assert len(rf) == 0
     assert "CSPP probably failed!" in caplog.text
+
+
+def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage):
+    """Test NPP rolling runner."""
+    from cspp_runner.runner import npp_rolling_runner
+
+    class TimeOut(Exception):
+        pass
+
+    def handler(signum, frame):
+        raise TimeOut()
+
+    signal.signal(signal.SIGALRM, handler)
+    signal.alarm(1)
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "workdir"))
+    with unittest.mock.patch("posttroll.subscriber.Subscribe") as psS, \
+         unittest.mock.patch("cspp_runner.runner.Publish") as crP, \
+         caplog.at_level(logging.DEBUG):
+        psS.return_value.__enter__.return_value.recv.return_value = [fakemessage]
+        try:
+            npp_rolling_runner(7, 24,
+                               os.fspath(tmp_path / "stamp_lut"),
+                               os.fspath(tmp_path / "lut"),
+                               "gopher://example.org/luts", "true",
+                               "gopher://example.org/ancs",
+                               os.fspath(tmp_path / "stamp_anc"),
+                               "true", "/file/available/rdr", "earth",
+                               "/product/available/sdr", tmp_path / "sdr/results",
+                               "true", [], 2)
+        except TimeOut:
+            pass # probably all is fine
+        else:
+            assert False  # should never get here
+    assert "Dynamic ancillary data will be updated" in caplog.text

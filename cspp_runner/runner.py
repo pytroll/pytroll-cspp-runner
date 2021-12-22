@@ -172,8 +172,10 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         LOG.info(cpe.stdout)
         LOG.error(cpe.stderr)
     else:
-        LOG.info(proc.stdout)
-        LOG.error(proc.stderr)
+        if proc.stdout:
+            LOG.info(proc.stdout)
+        if proc.stderr:
+            LOG.error(proc.stderr)
 
         now = datetime.utcnow()
         timestamp = now.strftime('%Y%m%d%H%M')
@@ -641,7 +643,9 @@ def npp_rolling_runner(
 
                 LOG.info("Now that SDR processing has completed, " +
                          "check for new LUT files...")
-                fresh = check_lut_files(thr_lut_files_age_days)
+                fresh = check_lut_files(
+                            thr_lut_files_age_days, url_download_trial_frequency_hours,
+                            lut_update_stampfile_prefix, lut_dir)
                 if fresh:
                     LOG.info("Files in the LUT dir are fresh...")
                     LOG.info("...or download has been attempted recently! " +
@@ -654,6 +658,7 @@ def npp_rolling_runner(
 
                 LOG.info("Dynamic ancillary data will be updated. " +
                          "Start url fetch...")
-                update_ancillary_files()
+                update_ancillary_files(url_jpss_remote_anc_dir,
+                                       anc_update_stampfile_prefix, mirror_jpss_ancillary)
 
     return
