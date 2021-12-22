@@ -1,40 +1,75 @@
 [offline]
-domain = 'dev'
-servername = safe.smhi.se
+# Site name.  Used in logging and in message published via posttroll.
 site = 'nrk'
 
-tle_dirs = ['/datadb/sat/orbit/tle', '/net/prodsat/datadb/sat/orbit/tle']
-tle_file_format = 'tle_%Y%m%d.txt'
-
-
-level0_home = /san1/polar_in/direct_readout/npp
+# Location to store Sensor Data Record (SDR) files after CSPP SDR processing
+# is completed.
 level1_home = /san1/polar_out/direct_readout/viirs/sdr
 
-filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
-globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
-
+# (unused?)
 working_dir = /san1/wrk_cspp
 
 # CSPP-viirs batch script and parameters:
-#viirs_sdr_call = ["viirs_sdr.sh", "-z"]
 viirs_sdr_call = viirs_sdr.sh
 
+# Options to pass to the viirs_sdr_call
+# see viirs_sdr.sh --help for explanation
+viirs_sdr_options = ['-p 1', '-l']
+
+# number of CPUs to use
 ncpus = 2
+
+# Topic to use for publishing posttroll messages
+publish_topic = /file/viirs/sdr
+
+# Posttroll topics to listen to (comma separated)
+subscribe_topics = /file/snpp/viirs,/file/noaa20/viirs
+
+# Location of JPSS lookup tables.  When in doubt, run sdr_luts.sh manually
+# and study its console output, which will contain the current location.
+url_jpss_remote_lut_dir = https://jpssdb.ssec.wisc.edu/cspp_luts_v_5_0/
+
+# Location of JPSS ancillary data
+url_jpss_remote_anc_dir = https://jpssdb.ssec.wisc.edu/cspp_v_4_0/ancillary
+
+# Location to store lookup tables on local disk
+lut_dir = /local_disk/opt/CSPP/SDR_1_5/anc/cache/luts
+
+# Prefix for files that will be used to describe the time of latest LUT update
+lut_update_stampfile_prefix = /local_disk/opt/CSPP/SDR_1_5/anc/static/lut_update
+
+# Prefix for files that will be used to describe the time of latest ancillary data update
+anc_update_stampfile_prefix = /local_disk/opt/CSPP/SDR_1_5/anc/static/anc_update
+
+# time in hours until ancillary data are checked for updates
+url_download_trial_frequency_hours = 24
+
+# time in days until lookup tables are checked for updates
+threshold_lut_files_age_days = 7
+
+# time until logfile is rotated
+log_rotation_days = 1
+
+# number of logfiles backed up
+log_rotation_backup = 10
+
+# script to update LUTs (must be in PATH)
+mirror_jpss_luts = sdr_luts.sh
+
+# script to update ancillary data (must be in PATH)
+mirror_jpss_ancillary = sdr_ancillary.sh
+
+# Time in seconds for SDR granule to be considering belonging to RDR granule.
+# Relevant if RDR consists of short granules.  Not relevant if RDR has a single file
+# for a whole overpass.
+granule_time_tolerance = 10
 
 [utv]
 
 site = 'nrk'
-domain = 'dev'
-servername = safe.smhi.se
 
-tle_dirs = ['/data/24/saf/polar_in/tle2', '/data/24/saf/polar_in/tle']
-tle_file_format = 'tle-%Y%m%d.txt'
 
-level0_home = /san1/polar_in/direct_readout/npp/lvl0
 level1_home = /san1/pps/import/PPS_data/source
-
-filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
-globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
 
 working_dir = /san1/cspp/work
 viirs_sdr_call = viirs_sdr.sh
@@ -57,18 +92,10 @@ log_rotation_backup = 10
 ncpus = 8
 
 [test]
-domain = 'test'
-servername = pps2.smhi.se
 site = 'nrk'
 
-tle_dirs = ['/data/24/saf/polar_in/tle2', '/data/24/saf/polar_in/tle']
-tle_file_format = 'tle-%Y%m%d.txt'
 
-level0_home = /san1/polar_in/direct_readout/npp/lvl0
 level1_home = /san1/pps/import/PPS_data/source
-
-filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
-globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
 
 working_dir = /san1/cspp/work
 mirror_jpss_luts = mirror_jpss_luts.bash
@@ -90,18 +117,10 @@ log_rotation_backup = 10
 ncpus = 8
 
 [prod]
-domain = 'prod'
-servername = pps.smhi.se
 site = 'nrk'
 
-tle_dirs = ['/data/24/saf/polar_in/tle2', '/data/24/saf/polar_in/tle']
-tle_file_format = 'tle-%Y%m%d.txt'
 
-level0_home = /san1/polar_in/direct_readout/npp/lvl0
 level1_home = /san1/pps/import/PPS_data/source
-
-filetype_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
-globfile_viirs = RNSCA-RVIRS_npp_d%Y%m%d_t%H%M%S*h5
 
 working_dir = /san1/cspp/work
 mirror_jpss_luts = mirror_jpss_luts.bash
