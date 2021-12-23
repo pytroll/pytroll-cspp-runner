@@ -54,12 +54,11 @@ setup(name=NAME,
       url="https://github.com/pytroll/pytroll-cspp-runner",
       long_description=long_description,
       packages=['cspp_runner', ],
-      scripts=['bin/viirs_dr_runner.py', ],
       data_files=[],
       install_requires=['posttroll', ],
       # test_requires=['mock'],
       # test_suite='cspp_runner.tests.suite',
-      python_requires='>=3.4',
+      python_requires='>=3.9',
       zip_safe=False,
       use_scm_version=True
       )
