@@ -614,7 +614,8 @@ def npp_rolling_runner(
     if publisher_config is None:
         pubconf = {"name": "viirs_dr_runner", "port": 0}
     else:
-        pubconf = yaml.safe_load(publisher_config)
+        with open(publisher_config, mode="rt", encoding="utf-8") as fp:
+            pubconf = yaml.safe_load(fp)
 
     LOG.debug("Subscribe topics = %s", str(subscribe_topics))
     with posttroll.subscriber.Subscribe('',

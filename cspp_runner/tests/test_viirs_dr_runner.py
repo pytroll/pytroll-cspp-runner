@@ -35,13 +35,19 @@ mode = unittest
 level1_home = /nowhere/special
 """
 
+fake_publisher_config_contents = """name: test-publisher
+port: 0
+nameservers:
+  - localhost
+"""
+
 
 @patch("argparse.ArgumentParser", autospec=True)
 def test_get_parser(ap):
     """Test parsing argumentsr."""
     import cspp_runner.viirs_dr_runner
     cspp_runner.viirs_dr_runner.parse_args()
-    assert ap.return_value.add_argument.call_count == 3
+    assert ap.return_value.add_argument.call_count == 4
 
 
 @patch("cspp_runner.viirs_dr_runner.parse_args")
@@ -49,17 +55,23 @@ def test_get_parser(ap):
 def test_main(crn, cvp, tmp_path):
     import cspp_runner.viirs_dr_runner
 
-    # create fake config file
-    conf = tmp_path / "conf"
+    # create fake config files
+    conf = tmp_path / "conf.ini"
     with conf.open(mode="wt", encoding="ascii") as fp:
         fp.write(fake_conf_contents)
+    yaml_conf = tmp_path / "publisher.yaml"
+    with yaml_conf.open(mode="wt", encoding="ascii") as fp:
+        fp.write(fake_publisher_config_contents)
 
-    # and fake log destination
+    # fake log destination
     log = tmp_path / "log"
+
+    # fake
 
     cvp.return_value = cspp_runner.viirs_dr_runner.get_parser().parse_args(
             ["-c", os.fspath(conf),
              "-C", "test",
-             "-l", os.fspath(log)])
+             "-l", os.fspath(log),
+             "-p", os.fspath(yaml_conf)])
 
     cspp_runner.viirs_dr_runner.main()
