@@ -45,8 +45,8 @@ _DEFAULT_LOG_FORMAT = '[%(levelname)s: %(asctime)s : %(name)s] %(message)s'
 LOG = logging.getLogger(__name__)
 
 
-def parse_args():
-    """Parse command-line arguments."""
+def get_parser():
+    """Get parser for commandline-arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config-file",
                         required=True,
@@ -61,6 +61,12 @@ def parse_args():
                         type=str,
                         default=None,
                         help="The file to log to (stdout per default).")
+    return parser
+
+
+def parse_args():
+    """Parse command-line arguments."""
+    parser = get_parser()
 
     return parser.parse_args()
 
