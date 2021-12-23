@@ -1,0 +1,9 @@
+# This configuration file can be used to configure the posttroll publisher
+# that viirs_dr_runner uses to announce SDR production is complete.  The
+# contents are converted to a dict using yaml.safe_load and then passed as
+# options to posttroll.publisher.Publish using the dict config introduced in
+# posttroll 1.7.
+name: viirs_dr_runner
+port: 0
+nameservers:
+  - localhost
