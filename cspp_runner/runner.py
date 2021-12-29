@@ -304,16 +304,22 @@ def publish_sdr(publisher, result_files, mda, site, mode,
         to_send["orbit_number"] = kwargs['orbit']
 
     to_send["dataset"] = []
+    start_times = set()
+    end_times = set()
     for result_file in result_files:
         filename = os.path.basename(result_file)
         to_send[
             'dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
                                                   result_file, '', '')),
                                'uid': filename})
+        (start_time, end_time) = get_sdr_times(filename)
+        start_times.add(start_time)
+        end_times.add(end_time)
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
-    to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
+    to_send['start_time'] = min(start_times)
+    to_send['end_time'] = max(end_times)
 
     LOG.debug('Site = %s', site)
     LOG.debug('Publish topic = %s', publish_topic)
