@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 - 2020 Pytroll
-
-# Author(s):
-
-#   Martin Raspaud <martin.raspaud@smhi.se>
+# Copyright (c) 2013 - 2020, 2022 Pytroll-developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -62,10 +58,10 @@ setup(name=NAME,
       packages=['cspp_runner', ],
       scripts=['bin/viirs_dr_runner.py', ],
       data_files=[],
-      install_requires=['posttroll', ],
+      install_requires=['posttroll', 'trollsift'],
       # test_requires=['mock'],
       # test_suite='cspp_runner.tests.suite',
-      python_requires='>=3.4',
+      python_requires='>=3.8',
       zip_safe=False,
       use_scm_version=True
       )
