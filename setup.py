@@ -58,7 +58,7 @@ setup(name=NAME,
       install_requires=['posttroll', 'trollsift'],
       # test_requires=['mock'],
       # test_suite='cspp_runner.tests.suite',
-      python_requires='>=3.9',
+      python_requires='>=3.8',
       zip_safe=False,
       use_scm_version=True
       )
