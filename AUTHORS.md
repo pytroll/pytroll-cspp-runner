@@ -10,5 +10,5 @@ The following people have made contributions to this project:
 - [Adam Dybbroe (adybbroe)](https://github.com/adybbroe)
 - [Panu Lahtinen (pnuu)](https://github.com/pnuu)
 - [Martin Raspaud (mraspaud)](https://github.com/mraspaud)
-- [Trygve Aspenes](https://github.com/)
+- [Trygve Aspenes](https://github.com/TAlonglong)
 - [Gerrit Holl](https://github.com/gerritholl)
