@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 - 2021 pytroll-cspp-runner developers
+# Copyright (c) 2013 - 2022 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ setup(name=NAME,
       long_description=long_description,
       packages=['cspp_runner', ],
       data_files=[],
-      install_requires=['posttroll', ],
+      install_requires=['posttroll', 'trollsift'],
       # test_requires=['mock'],
       # test_suite='cspp_runner.tests.suite',
       python_requires='>=3.9',
