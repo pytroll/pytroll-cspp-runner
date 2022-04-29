@@ -1,0 +1,26 @@
+name: test-environment
+channels:
+  - conda-forge
+dependencies:
+  - xarray
+  - distributed
+  - toolz
+  - Cython
+  - sphinx
+  - pyyaml
+  - coveralls
+  - coverage
+  - codecov
+  - behave
+  - mock
+  - zarr
+  - setuptools_scm
+  - pytest
+  - pytest-cov
+  - appdirs
+  - h5py
+  - pip
+  - pip:
+    - trollsift
+    - pyorbital
+    - posttroll
