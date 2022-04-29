@@ -59,7 +59,7 @@ def get_parser():
                         default=None,
                         help="The file containing configuration parameters.")
     parser.add_argument("-C", "--config-section",
-                        default=os.getenv("SMHI_MODE") or "dev",
+                        required=True,
                         help="log section to use")
     parser.add_argument("-l", "--log-file", dest="log",
                         type=str,
