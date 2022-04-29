@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 - 2020, 2022 Pytroll-developers
+# Copyright (c) 2013 - 2022 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,9 +19,7 @@
 """Setup for cspp-runner.
 """
 
-from setuptools import setup, find_packages
-import os.path
-
+from setuptools import setup
 
 try:
     # HACK: https://github.com/pypa/setuptools_scm/issues/190#issuecomment-351181286
@@ -56,7 +54,6 @@ setup(name=NAME,
       url="https://github.com/pytroll/pytroll-cspp-runner",
       long_description=long_description,
       packages=['cspp_runner', ],
-      scripts=['bin/viirs_dr_runner.py', ],
       data_files=[],
       install_requires=['posttroll', 'trollsift'],
       # test_requires=['mock'],

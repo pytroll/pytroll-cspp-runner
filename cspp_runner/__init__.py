@@ -61,9 +61,6 @@ class NPPStamp(object):
         return "%s_d%s_t%s_e%s_b%05d" % (self.platform, date, start, end,
                                          self.orbit_number)
 
-    def __cmp__(self, other):
-        return cmp(str(self), str(other))
-
 
 def get_npp_stamp(filename):
     """A unique stamp for a granule.
@@ -96,6 +93,7 @@ def get_datetime_from_filename(filename):
     'SVM11_npp_d20180121_t0903382_e0905024_b32305_c20180121091145126446_cspp_dev.h5'
     """
     return get_sdr_times(filename)[0]
+
 
 def get_sdr_times(filename):
     """Get the start and end times from the SDR file name."""

@@ -2,6 +2,7 @@
 and move the SDR granules to a destination directory"""
 
 import os
+import pathlib
 import stat
 from datetime import datetime
 import shutil
@@ -26,7 +27,9 @@ def cleanup_cspp_workdir(workdir):
     """Clean up the CSPP working dir after processing"""
 
     filelist = glob('%s/*' % workdir)
-    dummy = [os.remove(s) for s in filelist if os.path.isfile(s)]
+    for s in filelist:
+        if os.path.isfile(s):
+            os.remove(s)
     filelist = glob('%s/*' % workdir)
     LOG.info(
         "Number of items left after cleaning working dir = " + str(len(filelist)))
@@ -115,15 +118,14 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
     """Copy the SDR files to the sub-directory under the *subdir* directory
     structure"""
 
-    path = os.path.join(base_dir, subdir)
-    if not os.path.exists(path):
-        os.mkdir(path)
+    path = pathlib.Path(base_dir) / subdir
+    path.mkdir(exist_ok=True, parents=True)
 
     LOG.info("Number of SDR files: " + str(len(sdrfiles)))
     retvl = []
     for sdrfile in sdrfiles:
-        newfilename = os.path.join(path, os.path.basename(sdrfile))
-        LOG.info("Copy sdrfile to destination: " + newfilename)
+        newfilename = path / os.path.basename(sdrfile)
+        LOG.info(f"Copy sdrfile to destination: {newfilename!s}")
         if os.path.exists(sdrfile):
             LOG.info("File to copy: {file} <> ST_MTIME={time}".format(
                 file=str(sdrfile),
@@ -135,7 +137,7 @@ def pack_sdr_files(sdrfiles, base_dir, subdir):
                 file=str(newfilename),
                 time=datetime.utcfromtimestamp(os.stat(newfilename)[stat.ST_MTIME]).strftime('%Y%m%d-%H%M%S')))
 
-        retvl.append(newfilename)
+        retvl.append(os.fspath(newfilename))
 
     return retvl
 

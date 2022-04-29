@@ -13,4 +13,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Tests for cspp-runner package."""
+"""Tests for post-cspp module."""
+
+import logging
+import os
+
+
+def test_pack_sdr_files(tmp_path, caplog):
+    from cspp_runner.post_cspp import pack_sdr_files
+
+    # create dummy source file
+    p = tmp_path / "source" / "sdr.h5"
+    p.parent.mkdir(exist_ok=True, parents=True)
+    p.touch()
+    dest = tmp_path / "path" / "to" / "sdr_dir"
+
+    with caplog.at_level(logging.DEBUG):
+        newnames = pack_sdr_files(
+            [p],
+            os.fspath(dest),
+            "subdir")
+    assert "Number of SDR files: 1" in caplog.text
+    assert (dest / "subdir" / "sdr.h5").exists()
+    assert len(newnames) == 1
+    assert isinstance(newnames[0], str)

@@ -1,6 +1,9 @@
 [offline]
 # Site name.  Used in logging and in message published via posttroll.
-site = 'nrk'
+site = nrk
+
+# Development mode.  Used in the message published via posttroll.
+mode = devel
 
 # Location to store Sensor Data Record (SDR) files after CSPP SDR processing
 # is completed.
