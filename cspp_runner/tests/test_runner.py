@@ -54,18 +54,19 @@ def fakemessage(fakefile):
 def fake_result_names(tmp_path):
     p = tmp_path / "results"
     all = []
-    for f in [
-            "SVM16_j01_d20211229_t1342527_e1344173_b21313_c20211229140342734674_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1344185_e1345430_b21313_c20211229140341407055_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1345442_e1347070_b21313_c20211229140319026930_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1347082_e1348327_b21313_c20211229140346771475_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1348340_e1349585_b21313_c20211229140336541537_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1349597_e1351242_b21313_c20211229140303590485_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1351255_e1352482_b21313_c20211229140800466176_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1352495_e1354140_b21313_c20211229142321678073_cspp_dev.h5",
-            "SVM16_j01_d20211229_t1354152_e1355397_b21313_c20211229142320304291_cspp_dev.h5"]:
-        new = p / f
-        all.append(new)
+    for lbl in ["GMTCO", "SVM02", "SVM09", "SVM10", "SVM12"]:
+        for f in [
+                f"{lbl:s}_j01_d20211229_t1342527_e1344173_b21313_c20211229140342734674_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1344185_e1345430_b21313_c20211229140341407055_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1345442_e1347070_b21313_c20211229140319026930_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1347082_e1348327_b21313_c20211229140346771475_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1348340_e1349585_b21313_c20211229140336541537_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1349597_e1351242_b21313_c20211229140303590485_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1351255_e1352482_b21313_c20211229140800466176_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1352495_e1354140_b21313_c20211229142321678073_cspp_dev.h5",
+                f"{lbl:s}_j01_d20211229_t1354152_e1355397_b21313_c20211229142320304291_cspp_dev.h5"]:
+            new = p / f
+            all.append(new)
     return all
 
 
@@ -264,7 +265,7 @@ def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names, monkeypatch):
             (wd, rf) = cspp_runner.runner.spawn_cspp(
                 os.fspath(
                     tmp_path /
-                    "RNSCA-RVIRS_j01_d20211221_t1436057_e1444378_b21199_c20211221144433345000_all-_dev.h5"),
+                    "RNSCA-RVIRS_j01_d20211229_t1342527_e1355397_b21199_c20211229144433345000_all-_dev.h5"),
                 viirs_sdr_call="touch",
                 viirs_sdr_options=[],
                 granule_time_tolerance=10)
