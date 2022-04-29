@@ -668,7 +668,9 @@ def npp_rolling_runner(
                     LOG.warning("Files in the LUT dir are " +
                                 "non existent or old. " +
                                 "Start url fetch...")
-                    update_lut_files()
+                    update_lut_files(
+                        url_jpss_remote_lut_dir,
+                        lut_update_stampfile_prefix, mirror_jpss_luts)
 
                 LOG.info("Dynamic ancillary data will be updated. " +
                          "Start url fetch...")
