@@ -283,6 +283,13 @@ def test_spawn_cspp_failure(monkeypatch, tmp_path, caplog):
     assert "CSPP probably failed!" in caplog.text
 
 
+fake_publisher_config_contents = """name: test-publisher
+port: 0
+nameservers:
+  - localhost
+"""
+
+
 def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                         fake_results):
     """Test NPP rolling runner."""
@@ -299,7 +306,11 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
     def fake_spawn_cspp(current_granule, *glist, viirs_sdr_call,
                         viirs_sdr_options):
         fake_workdir.mkdir(exist_ok=True, parents=True)
+
         return (os.fspath(fake_workdir), fake_results)
+    yaml_conf = tmp_path / "publisher.yaml"
+    with yaml_conf.open(mode="wt", encoding="ascii") as fp:
+        fp.write(fake_publisher_config_contents)
 
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(fake_workdir))
     with unittest.mock.patch("posttroll.subscriber.Subscribe") as psS, \
@@ -320,7 +331,9 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                                "true", "/file/available/rdr", "earth",
                                "test",
                                "/product/available/sdr", tmp_path / "sdr/results",
-                               "true", [], 2)
+                               "true", [],
+                               ncpus=2,
+                               publisher_config=os.fspath(yaml_conf))
         except TimeOut:
             pass  # probably all is fine
         else:

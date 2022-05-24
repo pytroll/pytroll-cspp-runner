@@ -31,6 +31,7 @@ import stat
 import subprocess
 import tempfile
 import time
+import yaml
 from glob import glob
 from datetime import datetime, timedelta
 from multiprocessing.pool import ThreadPool
@@ -580,6 +581,7 @@ def npp_rolling_runner(
         viirs_sdr_options,
         granule_time_tolerance=10,
         ncpus=1,
+        publisher_config=None
         ):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
 
@@ -609,10 +611,16 @@ def npp_rolling_runner(
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
     viirs_proc = ViirsSdrProcessor(ncpus, level1_home)
 
+    if publisher_config is None:
+        pubconf = {"name": "viirs_dr_runner", "port": 0}
+    else:
+        with open(publisher_config, mode="rt", encoding="utf-8") as fp:
+            pubconf = yaml.safe_load(fp)
+
     LOG.debug("Subscribe topics = %s", str(subscribe_topics))
     with posttroll.subscriber.Subscribe('',
                                         subscribe_topics, True) as subscr:
-        with Publish('viirs_dr_runner', 0) as publisher:
+        with Publish(**pubconf) as publisher:
             while True:
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=300):
