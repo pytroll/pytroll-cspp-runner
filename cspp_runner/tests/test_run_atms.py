@@ -52,20 +52,32 @@ ATMS_FILENAMES = ['RATMS-RNSCA_j01_d20230208_t1154172_e1154492_b00001_c202302081
                   'RATMS-RNSCA_j01_d20230208_t1204251_e1204571_b00001_c20230208120518174000_drlu_ops.h5']
 
 
-def test_run_atms_from_message(caplog, monkeypatch, fake_cspp_workdir, fake_atms_posttroll_message):
+def test_run_atms_from_message(caplog, monkeypatch, fake_cspp_workdir,
+                               fake_atms_posttroll_message, fake_adl_atms_scripts):
     """Test launch and run the ATMS processing from a Posttroll message."""
     monkeypatch.setenv("CSPP_WORKDIR", str(fake_cspp_workdir))
 
-    msg = fake_atms_posttroll_message
+    cspp_homedir = fake_adl_atms_scripts
+    monkeypatch.setenv("CSPP_SDR_HOME", str(cspp_homedir))
+
+    mypath = cspp_homedir / 'atms'
+    path_env = os.environ.get('PATH')
+    monkeypatch.setenv("PATH", path_env + ":" + str(mypath))
 
     sdr_call = 'atms_sdr.sh'
     sdr_options = ['-d', '-a']
-
     with caplog.at_level(logging.INFO):
-        run_atms_from_message(msg, sdr_call, sdr_options)
+        run_atms_from_message(fake_atms_posttroll_message, sdr_call, sdr_options)
 
-    breakpoint()
-    x = 1
+    res = caplog.text.strip().split('\n')
+    assert len(res) == 4
+
+    for atmsfile in ATMS_FILENAMES:
+        assert atmsfile in res[0]
+        assert atmsfile in res[1]
+
+    assert "Seconds process time:" in res[2]
+    assert "Seconds wall clock time:" in res[3]
 
 
 def test_get_filelist_from_collection(fake_atms_posttroll_message):
