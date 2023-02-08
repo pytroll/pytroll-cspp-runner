@@ -1,4 +1,4 @@
-# Copyright (c) 2013 - 2021 pytroll-cspp-runner developers
+# Copyright (c) 2013 - 2021, 2023 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -144,17 +144,17 @@ def update_lut_files(url_jpss_remote_lut_dir,
     """
 
     update_files(
-            url_jpss_remote_lut_dir,
-            lut_update_stampfile_prefix,
-            mirror_jpss_luts,
-            "LUT",
-            timeout=timeout)
+        url_jpss_remote_lut_dir,
+        lut_update_stampfile_prefix,
+        mirror_jpss_luts,
+        "LUT",
+        timeout=timeout)
 
 
 def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
                  what,
                  timeout=600):
-    _check_environment("CSPP_WORKDIR")
+    check_environment("CSPP_WORKDIR")
     cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
     my_env = os.environ.copy()
@@ -165,13 +165,13 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
     LOG.info(f"Download command for {what:s}: {cmd!s}")
 
     proc = subprocess.Popen(
-            cmd, shell=False, env=my_env,
-            cwd=cspp_workdir,
-            stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        cmd, shell=False, env=my_env,
+        cwd=cspp_workdir,
+        stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-    while (line := proc.stdout.readline()):
+    while (line:=proc.stdout.readline()):
         LOG.info(line.decode("utf-8").strip('\n'))
-    while (line := proc.stderr.readline()):
+    while (line:=proc.stderr.readline()):
         LOG.error(line.decode("utf-8").strip('\n'))
 
     try:
@@ -181,8 +181,8 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
 
     if returncode != 0:
         LOG.exception(
-                f"Attempt to update {what:s} files failed with exit code "
-                f"{returncode:d}.")
+            f"Attempt to update {what:s} files failed with exit code "
+            f"{returncode:d}.")
     else:
         now = datetime.utcnow()
         timestamp = now.strftime('%Y%m%d%H%M')
@@ -199,7 +199,7 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         LOG.info(f"{what:s} downloaded. {what:s}-update timestamp file = " + filename)
 
 
-def _check_environment(*args):
+def check_environment(*args):
     """Check that requested environment variables are set.
 
     Raise EnvironmentError if they are not.
@@ -228,16 +228,15 @@ def update_ancillary_files(url_jpss_remote_anc_dir,
 
     """
     update_files(
-            url_jpss_remote_anc_dir,
-            anc_update_stampfile_prefix,
-            mirror_jpss_ancillary,
-            "ANC",
-            timeout=timeout)
+        url_jpss_remote_anc_dir,
+        anc_update_stampfile_prefix,
+        mirror_jpss_ancillary,
+        "ANC",
+        timeout=timeout)
 
 
 def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
-    """Run CSPP on VIIRS RDR files"""
-
+    """Run CSPP on VIIRS RDR files."""
     LOG.info("viirs_sdr_options = " + str(viirs_sdr_options))
     path = os.environ["PATH"]
     LOG.info("Path from environment: %s", str(path))
@@ -259,9 +258,9 @@ def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
     viirs_sdr_proc = subprocess.Popen(
-            cmdlist, cwd=working_dir,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE)
+        cmdlist, cwd=working_dir,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE)
     while True:
         line = viirs_sdr_proc.stdout.readline()
         if not line:
@@ -434,12 +433,12 @@ class ViirsSdrProcessor:
             keeper = self.glist[1]
             LOG.info("Start CSPP: RDR files = " + str(self.glist))
             self.cspp_results.append(
-                    self.pool.apply_async(
-                        spawn_cspp,
-                        [keeper] + self.glist,
-                        {"viirs_sdr_call": viirs_sdr_call,
-                         "viirs_sdr_options": viirs_sdr_options,
-                         "granule_time_tolerance": granule_time_tolerance}))
+                self.pool.apply_async(
+                    spawn_cspp,
+                    [keeper] + self.glist,
+                    {"viirs_sdr_call": viirs_sdr_call,
+                     "viirs_sdr_options": viirs_sdr_options,
+                     "granule_time_tolerance": granule_time_tolerance}))
             LOG.debug("Inside run: Return with a False...")
             return False
         elif msg and ('platform_name' not in msg.data or 'sensor' not in msg.data):
@@ -506,12 +505,12 @@ class ViirsSdrProcessor:
             rdr_filename, orbnum = fix_rdrfile(rdr_filename)
         except IOError:
             LOG.exception(
-                    'Failed to fix orbit number in RDR file = ' +
-                    str(urlobj.path))
+                'Failed to fix orbit number in RDR file = ' +
+                str(urlobj.path))
         except cspp_runner.orbitno.NoTleFile:
             LOG.exception(
-                    'Failed to fix orbit number in RDR file = ' +
-                    str(urlobj.path))
+                'Failed to fix orbit number in RDR file = ' +
+                str(urlobj.path))
             LOG.error('No TLE file...')
         if orbnum:
             self.orbit_number = orbnum
@@ -556,11 +555,11 @@ class ViirsSdrProcessor:
                  str([keeper] + self.glist))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(
-                self.pool.apply_async(
-                    spawn_cspp,
-                    [keeper] + self.glist,
-                    {"viirs_sdr_call": viirs_sdr_call,
-                     "viirs_sdr_options": viirs_sdr_options}))
+            self.pool.apply_async(
+                spawn_cspp,
+                [keeper] + self.glist,
+                {"viirs_sdr_call": viirs_sdr_call,
+                 "viirs_sdr_options": viirs_sdr_options}))
         if self.fullswath:
             LOG.info("Full swath. Break granules loop")
             return False
@@ -588,15 +587,15 @@ def npp_rolling_runner(
         granule_time_tolerance=10,
         ncpus=1,
         publisher_config=None
-        ):
+):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
 
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
     LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(thr_lut_files_age_days))
 
     fresh = check_lut_files(
-            thr_lut_files_age_days, url_download_trial_frequency_hours,
-            lut_update_stampfile_prefix, lut_dir)
+        thr_lut_files_age_days, url_download_trial_frequency_hours,
+        lut_update_stampfile_prefix, lut_dir)
     if fresh:
         LOG.info("Files in the LUT dir are fresh...")
         LOG.info("...or download has been attempted recently! " +
@@ -631,8 +630,8 @@ def npp_rolling_runner(
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=300):
                     status = viirs_proc.run(
-                            msg, viirs_sdr_call, viirs_sdr_options,
-                            granule_time_tolerance)
+                        msg, viirs_sdr_call, viirs_sdr_options,
+                        granule_time_tolerance)
                     LOG.debug("Sent message to run: %s", str(msg))
                     LOG.debug("Status: %s", str(status))
                     if not status:
@@ -664,8 +663,8 @@ def npp_rolling_runner(
                 LOG.info("Now that SDR processing has completed, " +
                          "check for new LUT files...")
                 fresh = check_lut_files(
-                            thr_lut_files_age_days, url_download_trial_frequency_hours,
-                            lut_update_stampfile_prefix, lut_dir)
+                    thr_lut_files_age_days, url_download_trial_frequency_hours,
+                    lut_update_stampfile_prefix, lut_dir)
                 if fresh:
                     LOG.info("Files in the LUT dir are fresh...")
                     LOG.info("...or download has been attempted recently! " +

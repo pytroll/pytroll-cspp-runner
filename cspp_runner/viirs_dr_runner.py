@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2013 - 2021 cspp-runner developers
+# Copyright (c) 2013 - 2023 Pytroll developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 
 """Pytroll processing converting VIIRS RDR to SDR using CSPP.
 
@@ -50,8 +51,8 @@ LOG = logging.getLogger(__name__)
 def get_parser():
     """Get parser for commandline-arguments."""
     parser = argparse.ArgumentParser(
-            description=__doc__,
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description=__doc__,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-c", "--config-file",
                         required=True,
                         dest="config_file",
@@ -112,9 +113,9 @@ def main():
         ndays = int(OPTIONS.get("log_rotation_days", 1))
         ncount = int(OPTIONS.get("log_rotation_backup", 7))
         handler = logging.handlers.TimedRotatingFileHandler(
-                args.log, when='midnight', interval=ndays,
-                backupCount=ncount, encoding=None,
-                delay=False, utc=True)
+            args.log, when='midnight', interval=ndays,
+            backupCount=ncount, encoding=None,
+            delay=False, utc=True)
 
         handler.doRollover()
     else:
@@ -129,26 +130,26 @@ def main():
     logging.getLogger('posttroll').setLevel(logging.INFO)
 
     npp_rolling_runner(
-            thr_lut_files_age_days,
-            url_download_trial_frequency_hours,
-            lut_update_stampfile_prefix,
-            lut_dir,
-            url_jpss_remote_lut_dir,
-            OPTIONS["mirror_jpss_luts"],
-            url_jpss_remote_anc_dir,
-            anc_update_stampfile_prefix,
-            OPTIONS["mirror_jpss_ancillary"],
-            subscribe_topics,
-            site,
-            OPTIONS["mode"],
-            publish_topic,
-            OPTIONS["level1_home"],
-            viirs_sdr_call,
-            viirs_sdr_options,
-            int(OPTIONS.get("granule_time_tolerance", 10)),
-            int(OPTIONS.get("ncpus", 1)),
-            publisher_config=args.publisher,
-            )
+        thr_lut_files_age_days,
+        url_download_trial_frequency_hours,
+        lut_update_stampfile_prefix,
+        lut_dir,
+        url_jpss_remote_lut_dir,
+        OPTIONS["mirror_jpss_luts"],
+        url_jpss_remote_anc_dir,
+        anc_update_stampfile_prefix,
+        OPTIONS["mirror_jpss_ancillary"],
+        subscribe_topics,
+        site,
+        OPTIONS["mode"],
+        publish_topic,
+        OPTIONS["level1_home"],
+        viirs_sdr_call,
+        viirs_sdr_options,
+        int(OPTIONS.get("granule_time_tolerance", 10)),
+        int(OPTIONS.get("ncpus", 1)),
+        publisher_config=args.publisher,
+    )
 
 
 if __name__ == "__main__":
