@@ -10,8 +10,8 @@ atms_sdr_call: atms_sdr.sh
 # Options to pass to the viirs_sdr_call
 # see viirs_sdr.sh --help for explanation
 atms_sdr_options:
-  - a
-  - d
+  - '-a'
+  - '-d'
 
 # Topic to use for publishing posttroll messages
 publish_topics:

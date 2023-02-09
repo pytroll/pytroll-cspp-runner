@@ -38,4 +38,4 @@ def test_get_yaml_configuration(fake_yamlconfig_file):
     assert config['level1_home'] == '/path/to/where/the/atms/sdr/files/will/be/stored'
     assert config['working_dir'] == '/san1/cspp/work'
     assert config['atms_sdr_call'] == 'atms_sdr.sh'
-    assert config['atms_sdr_options'] == ['a', 'd']
+    assert config['atms_sdr_options'] == ['-a', '-d']
