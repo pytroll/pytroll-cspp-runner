@@ -65,6 +65,10 @@ def get_parser():
                         help="The file containing configuration parameters.")
     parser.add_argument("-l", "--log-config",
                         help="Log config file to use instead of the standard logging.")
+    parser.add_argument("-v", "--verbose", dest="verbosity", action="count", default=0,
+                        help="Verbosity (between 1 and 2 occurrences with more leading to more "
+                        "verbose logging). WARN=0, INFO=1, "
+                        "DEBUG=2. This is overridden by the log config file if specified.")
     return parser
 
 
