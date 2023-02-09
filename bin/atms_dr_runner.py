@@ -22,7 +22,6 @@
 
 """Level-1 processing for Direct Readout S-NPP/JPSS ATMS data.
 
-
 Using the CSPP level-1 processor from the SSEC, Wisconsin, based on the ADL
 software from NASA. Listen for pytroll messages of ready RDR files trigger
 processing on direct readout RDR data (granules or full swaths).
@@ -31,15 +30,11 @@ processing on direct readout RDR data (granules or full swaths).
 
 import argparse
 import logging
-import ast
-import configparser
 import os
 import sys
-import logging
 import logging.handlers
 
 from cspp_runner.atms_rdr2sdr_runner import AtmsSdrRunner
-from cspp_runner.config import read_config
 from cspp_runner.logger import setup_logging
 
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
@@ -84,13 +79,6 @@ def main():
     print("Read config from", cmd_args.config_file)
 
     setup_logging(cmd_args)
-
-    #OPTIONS = read_config(cmd_args.config_file)
-    #publish_topics = OPTIONS.get('publish_topics')
-    #subscribe_topics = OPTIONS.get('subscribe_topics')
-    #viirs_sdr_options = OPTIONS.get("atms_sdr_options")
-
-    breakpoint()
 
     try:
         atms = AtmsSdrRunner(cmd_args.config_file)
