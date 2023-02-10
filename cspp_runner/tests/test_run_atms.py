@@ -22,13 +22,20 @@
 
 """Testing the ATMS processing."""
 
-
-import pytest
 import os
 import logging
+from glob import glob
+from datetime import datetime
 
+from trollsift import Parser
+
+from cspp_runner.config import read_config
+
+from cspp_runner.atms_rdr2sdr_runner import get_filepaths
 from cspp_runner.atms_rdr2sdr_runner import run_atms_from_message
 from cspp_runner.atms_rdr2sdr_runner import get_filelist_from_collection
+from cspp_runner.atms_rdr2sdr_runner import move_files_to_destination
+
 
 ATMS_FILENAMES = ['RATMS-RNSCA_j01_d20230208_t1154172_e1154492_b00001_c20230208115457829000_drlu_ops.h5',
                   'RATMS-RNSCA_j01_d20230208_t1154492_e1155212_b00001_c20230208115538023000_drlu_ops.h5',
@@ -89,3 +96,61 @@ def test_get_filelist_from_collection(fake_atms_posttroll_message):
     assert len(files) == 20
     bnames = [os.path.basename(item) for item in files]
     assert bnames == ATMS_FILENAMES
+
+
+def test_get_filepaths(fake_yamlconfig_file, fake_atms_sdr_files_several_passes):
+    """Test get the filepaths of the ATMS SDR files produced from CSPP."""
+    config = read_config(fake_yamlconfig_file)
+
+    patterns = config['sdr_file_patterns']
+    fake_message_data = {}
+    fake_message_data['orbit_number'] = 27088
+    fake_message_data['platform_name'] = 'NOAA-20'
+    fake_message_data['start_time'] = datetime.strptime("2023-02-09T13:17:20.600000", "%Y-%m-%dT%H:%M:%S.%f")
+    fake_message_data['end_time'] = datetime.strptime("2023-02-09T13:25:52.600000", "%Y-%m-%dT%H:%M:%S.%f")
+    files = get_filepaths(str(fake_atms_sdr_files_several_passes), fake_message_data, patterns)
+
+    assert len(files) == 3
+    p__ = Parser(patterns[0])
+    result = p__.parse(os.path.basename(files[0]))
+    assert result['platform_shortname'] == 'j01'
+    assert result['orbit'] == 27088
+    assert result['start_time'] == datetime(2023, 2, 9, 13, 17, 54, 600000)
+
+
+def test_move_files_to_destination_dir_is_str(fake_yamlconfig_file, fake_sdr_homedir, fake_atms_sdr_files_one_pass):
+    """Test move the ATMS SDR files to a destination dir."""
+    config = read_config(fake_yamlconfig_file)
+    patterns = config['sdr_file_patterns']
+
+    sdr_file_paths = glob(str(fake_atms_sdr_files_one_pass / '*h5'))
+    expected = [os.path.basename(f) for f in sdr_file_paths]
+    expected.sort()
+
+    filelist = move_files_to_destination(sdr_file_paths, patterns, str(fake_sdr_homedir))
+
+    assert len(filelist) == 3
+    assert os.path.basename(os.path.normpath(os.path.dirname(filelist[0]))) == "noaa20_20230209_1317_27088"
+    bnames = [os.path.basename(f) for f in filelist]
+    bnames.sort()
+
+    assert bnames == expected
+
+
+def test_move_files_to_destination_pathlib(fake_yamlconfig_file, fake_sdr_homedir, fake_atms_sdr_files_one_pass):
+    """Test move the ATMS SDR files to a destination dir."""
+    config = read_config(fake_yamlconfig_file)
+    patterns = config['sdr_file_patterns']
+
+    sdr_file_paths = glob(str(fake_atms_sdr_files_one_pass / '*h5'))
+    expected = [os.path.basename(f) for f in sdr_file_paths]
+    expected.sort()
+
+    filelist = move_files_to_destination(sdr_file_paths, patterns, fake_sdr_homedir)
+
+    assert len(filelist) == 3
+    assert os.path.basename(os.path.normpath(os.path.dirname(filelist[0]))) == "noaa20_20230209_1317_27088"
+    bnames = [os.path.basename(f) for f in filelist]
+    bnames.sort()
+
+    assert bnames == expected

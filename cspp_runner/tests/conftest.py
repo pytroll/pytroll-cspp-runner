@@ -31,6 +31,17 @@ TEST_YAML_CONFIG_CONTENT = """# Location to store Sensor Data Record (SDR) files
 # is completed.
 level1_home: /path/to/where/the/atms/sdr/files/will/be/stored
 
+# Examples:
+# TATMS_npp_d20230209_t1047306_e1236183_b58482_c20230209123846465182_cspp_dev.h5
+# SATMS_npp_d20230209_t1047306_e1236183_b58482_c20230209123844714309_cspp_dev.h5
+# GATMO_npp_d20230209_t1047306_e1236183_b58482_c20230209123847932256_cspp_dev.h5
+
+sdr_file_patterns:
+  - 'SATMS_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_time:%H%M%S%f}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'
+  - 'GATMO_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_time:%H%M%S%f}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'
+  - 'TATMS_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_time:%H%M%S%f}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'
+
+
 working_dir: /san1/cspp/work
 
 # CSPP-atms batch script and parameters:
@@ -49,7 +60,7 @@ publish_topics:
 # Posttroll topics to listen to (comma separated)
 subscribe_topics:
   - /file/atms/rdr
-"""
+"""  # noqa
 
 TEST_ATMS_COLLECTION_MESSAGE = """pytroll://atms/rdr/0/gatherer collection safusr.u@lxserv1043.smhi.se 2023-02-08T12:06:01.560943 v1.01 application/json {"start_time": "2023-02-08T11:54:17.200000", "end_time": "2023-02-08T12:04:57.100000", "orbit_number": 27071, "platform_name": "NOAA-20", "sensor": "atms", "format": "RDR", "type": "HDF5", "data_processing_level": "0", "variant": "DR", "collection_area_id": "euron1", "collection": [{"start_time": "2023-02-08T11:54:17.200000", "end_time": "2023-02-08T11:54:49.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1154172_e1154492_b00001_c20230208115457829000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1154172_e1154492_b00001_c20230208115457829000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:54:49.200000", "end_time": "2023-02-08T11:55:21.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1154492_e1155212_b00001_c20230208115538023000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1154492_e1155212_b00001_c20230208115538023000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:55:21.200000", "end_time": "2023-02-08T11:55:53.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1155212_e1155532_b00001_c20230208115558220000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1155212_e1155532_b00001_c20230208115558220000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:55:53.200000", "end_time": "2023-02-08T11:56:25.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1155532_e1156252_b00001_c20230208115638170000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1155532_e1156252_b00001_c20230208115638170000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:56:25.200000", "end_time": "2023-02-08T11:56:57.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1156252_e1156572_b00001_c20230208115718069000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1156252_e1156572_b00001_c20230208115718069000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:56:57.200000", "end_time": "2023-02-08T11:57:29.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1156572_e1157292_b00001_c20230208115738216000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1156572_e1157292_b00001_c20230208115738216000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:57:29.200000", "end_time": "2023-02-08T11:58:01.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1157292_e1158012_b00001_c20230208115818194000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1157292_e1158012_b00001_c20230208115818194000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:58:01.200000", "end_time": "2023-02-08T11:58:33.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1158012_e1158332_b00001_c20230208115837985000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1158012_e1158332_b00001_c20230208115837985000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:58:33.200000", "end_time": "2023-02-08T11:59:05.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1158332_e1159052_b00001_c20230208115918341000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1158332_e1159052_b00001_c20230208115918341000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:59:05.200000", "end_time": "2023-02-08T11:59:37.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1159052_e1159372_b00001_c20230208115957983000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1159052_e1159372_b00001_c20230208115957983000_drlu_ops.h5"}, {"start_time": "2023-02-08T11:59:37.200000", "end_time": "2023-02-08T12:00:09.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1159372_e1200092_b00001_c20230208120017590000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1159372_e1200092_b00001_c20230208120017590000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:00:09.200000", "end_time": "2023-02-08T12:00:41.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1200092_e1200412_b00001_c20230208120058642000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1200092_e1200412_b00001_c20230208120058642000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:00:41.200000", "end_time": "2023-02-08T12:01:13.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1200412_e1201132_b00001_c20230208120118131000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1200412_e1201132_b00001_c20230208120118131000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:01:13.200000", "end_time": "2023-02-08T12:01:45.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1201132_e1201452_b00001_c20230208120157708000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1201132_e1201452_b00001_c20230208120157708000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:01:45.200000", "end_time": "2023-02-08T12:02:17.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1201452_e1202172_b00001_c20230208120238505000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1201452_e1202172_b00001_c20230208120238505000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:02:17.200000", "end_time": "2023-02-08T12:02:49.200000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1202172_e1202492_b00001_c20230208120258137000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1202172_e1202492_b00001_c20230208120258137000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:02:49.200000", "end_time": "2023-02-08T12:03:21.100000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1202492_e1203211_b00001_c20230208120337761000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1202492_e1203211_b00001_c20230208120337761000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:03:21.100000", "end_time": "2023-02-08T12:03:53.100000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1203211_e1203531_b00001_c20230208120358165000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1203211_e1203531_b00001_c20230208120358165000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:03:53.100000", "end_time": "2023-02-08T12:04:25.100000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1203531_e1204251_b00001_c20230208120437760000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1203531_e1204251_b00001_c20230208120437760000_drlu_ops.h5"}, {"start_time": "2023-02-08T12:04:25.100000", "end_time": "2023-02-08T12:04:57.100000", "uri": "ssh://172.29.1.52/path/to/jpss/atms/rdr/RATMS-RNSCA_j01_d20230208_t1204251_e1204571_b00001_c20230208120518174000_drlu_ops.h5", "uid": "RATMS-RNSCA_j01_d20230208_t1204251_e1204571_b00001_c20230208120518174000_drlu_ops.h5"}]}"""  # noqa
 
@@ -131,3 +142,46 @@ def fake_adl_atms_scripts(tmp_path_factory):
         fpt.write(FAKE_ATMS_PYTHON_MAIN_SCRIPT)
 
     yield cspp_home_dir
+
+
+SINGLE_ATMS_FILESET = [
+    "TATMS_j01_d20230209_t1317546_e1325223_b27088_c20230209132641834076_cspp_dev.h5",
+    "SATMS_j01_d20230209_t1317546_e1325223_b27088_c20230209132641621751_cspp_dev.h5",
+    "GATMO_j01_d20230209_t1317546_e1325223_b27088_c20230209132642207625_cspp_dev.h5"
+]
+
+
+FAKE_ATMS_SDR_FILENAMES = [
+    "TATMS_npp_d20230209_t1047306_e1236183_b58482_c20230209123846465182_cspp_dev.h5",
+    "SATMS_npp_d20230209_t1047306_e1236183_b58482_c20230209123844714309_cspp_dev.h5",
+    "GATMO_npp_d20230209_t1047306_e1236183_b58482_c20230209123847932256_cspp_dev.h5",
+]
+FAKE_ATMS_SDR_FILENAMES = FAKE_ATMS_SDR_FILENAMES + SINGLE_ATMS_FILESET
+
+
+@pytest.fixture
+def fake_atms_sdr_files_several_passes(tmp_path):
+    """Make fake ATMS SDR files."""
+    for fname in FAKE_ATMS_SDR_FILENAMES:
+        filepath = tmp_path / fname
+        filepath.touch()
+
+    yield tmp_path
+
+
+@pytest.fixture
+def fake_atms_sdr_files_one_pass(tmp_path_factory):
+    """Make fake ATMS SDR files."""
+    dirname = tmp_path_factory.mktemp('data')
+    for fname in SINGLE_ATMS_FILESET:
+        filepath = dirname / fname
+        filepath.touch()
+
+    yield dirname
+
+
+@pytest.fixture
+def fake_sdr_homedir(tmp_path_factory):
+    """Make a fake home directory for the SDR files."""
+    dirname = tmp_path_factory.mktemp('sdr_home')
+    yield dirname

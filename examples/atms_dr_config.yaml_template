@@ -2,6 +2,17 @@
 # is completed.
 level1_home: /path/to/where/the/atms/sdr/files/will/be/stored
 
+# Examples:
+# TATMS_npp_d20230209_t1047306_e1236183_b58482_c20230209123846465182_cspp_dev.h5
+# SATMS_npp_d20230209_t1047306_e1236183_b58482_c20230209123844714309_cspp_dev.h5
+# GATMO_npp_d20230209_t1047306_e1236183_b58482_c20230209123847932256_cspp_dev.h5
+
+sdr_file_patterns:
+  - 'SATMS_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_time:%H%M%S%f}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'
+  - 'GATMO_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_time:%H%M%S%f}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'
+  - 'TATMS_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S%f}_e{end_time:%H%M%S%f}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'
+
+
 working_dir: /san1/cspp/work
 
 # CSPP-atms batch script and parameters:

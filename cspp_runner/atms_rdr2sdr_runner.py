@@ -20,12 +20,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-"""
+"""Run the ATMS RDR to SDR processing withy CSPP on incoming DR data."""
+
+
 import socket
 from trollsift import Parser, globify
 import os
+import shutil
+
 import pathlib
+import tempfile
+from glob import glob
+from datetime import datetime
+
 import subprocess
 from urllib.parse import urlparse
 import logging
@@ -39,6 +46,9 @@ from posttroll.message import Message
 from posttroll.publisher import NoisyPublisher
 from cspp_runner.config import read_config
 from cspp_runner.runner import check_environment
+from cspp_runner.constants import (PLATFORM_SHORTNAMES,
+                                   PLATFORM_LONGNAMES)
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +64,11 @@ class AtmsSdrRunner(Thread):
         self.options = {}
         config = read_config(self.configfile)
         self.options = config
+
+        self.host = socket.gethostname()
+
+        self.sdr_file_patterns = self.options['sdr_file_patterns']
+        self._sdr_home = self.options['level1_home']
 
         self.input_topics = self.options['subscribe_topics']
         self.output_topics = self.options['publish_topics']
@@ -95,31 +110,125 @@ class AtmsSdrRunner(Thread):
                     logger.debug("Message type not supported: %s", str(msg.type))
                     continue
 
-                #platform_name = msg.data.get('platform_name')
-
                 wrkdir = run_atms_from_message(msg, self._atms_sdr_call, self._atms_sdr_options)
 
-                logger.warning("Do nothing...")
+                logger.info("ATMS RDR to SDR processing finished")
+                logger.debug("Start packing the files and publish")
 
-                # filename = get_filename_from_uri(msg.data.get('uri'))
-                # if not os.path.exists(filename):
-                #     logger.warning("File does not exist!")
-                #     continue
+                sdr_filepaths = get_filepaths(wrkdir, msg.data, self.sdr_file_patterns)
 
-                # file_ok = check_file_type_okay(msg.data.get('type'))
+                dest_sdr_files = move_files_to_destination(sdr_filepaths, self.sdr_file_patterns, self._sdr_home)
 
-                # for output_msg in output_messages:
-                #     if output_msg:
-                #         logger.debug("Sending message: %s", str(output_msg))
-                #         self.publisher.send(str(output_msg))
+                output_messages = self._get_output_messages(dest_sdr_files, msg)
+                for output_msg in output_messages:
+                    if output_msg:
+                        logger.debug("Sending message: %s", str(output_msg))
+                        self.publisher.send(str(output_msg))
+
+    def _get_output_messages(self, sdr_files, input_msg):
+        """Generate output messages from SDR files and input message, and return."""
+        out_messages = []
+        for topic in self.output_topics:
+            to_send = prepare_posttroll_message(input_msg)
+            dataset = []
+            for filepath in sdr_files:
+                sdrfile = {}
+                sdrfile['uri'] = 'ssh://{host}/{path}'.format(host=self.host, path=filepath)
+                sdrfile['uid'] = os.path.basename(filepath)
+                dataset.append(sdrfile)
+
+            to_send['type'] = 'HDF5'
+            to_send['format'] = 'SDR'
+            to_send['data_processing_level'] = '1B'
+            to_send['dataset'] = dataset
+
+            pubmsg = Message(topic, 'dataset', to_send)
+            out_messages.append(pubmsg)
+
+        return out_messages
+
+
+def prepare_posttroll_message(input_msg):
+    """Create the basic posttroll-message fields and return."""
+    to_send = input_msg.data.copy()
+    to_send.pop('dataset', None)
+    to_send.pop('collection', None)
+    to_send.pop('uri', None)
+    to_send.pop('uid', None)
+    to_send.pop('format', None)
+    to_send.pop('type', None)
+
+    return to_send
+
+
+def move_files_to_destination(sdr_filepaths, sdr_file_patterns, sdr_home):
+    """Move the SDR files from tmp-directory to a final destination."""
+    dirpath = create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home)
+    for filename in sdr_filepaths:
+        shutil.move(filename, dirpath)
+
+    return glob(str(dirpath / "*"))
+
+
+def create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home):
+    """From the list of SDR files create a sub-directory where files should be moved."""
+    s_pattern = None
+    for pattern in sdr_file_patterns:
+        if pattern.startswith('S'):
+            s_pattern = pattern
+            break
+
+    start_time = datetime.now()
+    p__ = Parser(s_pattern)
+
+    orbit = None
+    platform = None
+    for filename in sdr_filepaths:
+        bname = os.path.basename(str(filename))
+        try:
+            result = p__.parse(bname)
+        except ValueError:
+            continue
+
+        stime = result['start_time']
+        if stime < start_time:
+            start_time = stime
+            orbit = result['orbit']
+            platform = PLATFORM_LONGNAMES.get(result['platform_shortname'])
+
+    subdirname = "{platform}_{dtime:%Y%m%d_%H%M}_{orbit:05d}".format(platform=platform.lower().replace('-', ''),
+                                                                     dtime=start_time, orbit=orbit)
+    if isinstance(sdr_home, str):
+        sdr_home = pathlib.Path(sdr_home)
+
+    dirpath = sdr_home / subdirname
+    dirpath.mkdir()
+    return dirpath
+
+
+def get_filepaths(directory, msg_data, file_patterns):
+    """Identify the ATMS files output from CSPP and return filepaths."""
+    files = []
+    for pattern in file_patterns:
+        # p__ = Parser(pattern)
+        mda = {'orbit': msg_data['orbit_number'],
+               'platform_shortname': PLATFORM_SHORTNAMES.get(msg_data['platform_name'])}
+
+        # 'start_time': msg_data['start_time']} Here check for times, if
+        # start/end times in the file names are sufficiently close to the
+        # actual ones from the messages
+
+        glbstr = globify(pattern, mda)
+        flist = glob(os.path.join(directory, glbstr))
+        files = files + flist
+
+    return files
 
 
 def run_atms_from_message(posttroll_msg, sdr_call, sdr_options):
     """Trigger ATMS processing on ATMS scene, from Posttroll message."""
-
-    platform_name = posttroll_msg.data.get('platform_name')
-    sensor = posttroll_msg.data.get('sensor')
-
+    # platform_name = posttroll_msg.data.get('platform_name')
+    # sensor = posttroll_msg.data.get('sensor')
     collection = posttroll_msg.data.get('collection')
     if collection:
         atms_rdr_files = get_filelist_from_collection(collection)
@@ -132,6 +241,13 @@ def run_atms_from_message(posttroll_msg, sdr_call, sdr_options):
     cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
 
+    try:
+        working_dir = tempfile.mkdtemp(dir=cspp_workdir)
+    except OSError:
+        working_dir = tempfile.mkdtemp()
+
+    os.environ["CSPP_WORKDIR"] = working_dir
+
     my_env = os.environ.copy()
 
     # Run the command:
@@ -143,7 +259,8 @@ def run_atms_from_message(posttroll_msg, sdr_call, sdr_options):
     t0_wall = time.time()
     logger.info("Popen call arguments: " + str(cmdlist))
 
-    sdr_proc = subprocess.Popen(cmdlist, cwd=cspp_workdir,
+    sdr_proc = subprocess.Popen(cmdlist, cwd=working_dir,
+                                env=my_env,
                                 stderr=subprocess.PIPE,
                                 stdout=subprocess.PIPE)
     while True:
