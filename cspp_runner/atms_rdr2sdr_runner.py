@@ -147,6 +147,20 @@ class AtmsSdrRunner(Thread):
 
         return out_messages
 
+    def close(self):
+        """Shutdown the ATMS SDR processing."""
+        logger.info('Terminating ATMS RDR to SDR processing.')
+        self.loop = False
+        try:
+            self.listener.stop()
+        except Exception:
+            logger.exception("Couldn't stop listener.")
+        if self.publisher:
+            try:
+                self.publisher.stop()
+            except Exception:
+                logger.exception("Couldn't stop publisher.")
+
 
 def prepare_posttroll_message(input_msg):
     """Create the basic posttroll-message fields and return."""
