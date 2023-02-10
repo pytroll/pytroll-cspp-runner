@@ -116,38 +116,19 @@ class AtmsSdrRunner(Thread):
                 logger.debug("Start packing the files and publish")
 
                 sdr_filepaths = get_filepaths(wrkdir, msg.data, self.sdr_file_patterns)
+                logger.debug("Files: %s", str(sdr_filepaths))
+
                 dest_sdr_files = move_files_to_destination(sdr_filepaths,
                                                            self.sdr_file_patterns, self._sdr_home)
+                logger.debug("Files after having been moved: %s", str(dest_sdr_files))
 
-                orbit_number = self._fix_orbit_number(dest_sdr_files, self.sdr_file_patterns)
+                orbit_number = _fix_orbit_number(dest_sdr_files, self.sdr_file_patterns)
                 output_messages = self._get_output_messages(dest_sdr_files, msg, orbit_number)
 
                 for output_msg in output_messages:
                     if output_msg:
                         logger.debug("Sending message: %s", str(output_msg))
                         self.publisher.send(str(output_msg))
-
-    def _fix_orbit_number(self, sdr_files, sdr_file_patterns):
-        """Get the orbit number from the SDR files produced with CSPP."""
-        s_pattern = get_tb_files_pattern(sdr_file_patterns)
-
-        p__ = Parser(s_pattern)
-        orbit_numbers = []
-        for filename in sdr_files:
-            bname = os.path.basename(str(filename))
-            logger.debug("SDR filename: %s", str(bname))
-            try:
-                result = p__.parse(bname)
-            except ValueError:
-                continue
-
-            orbit = result.get('orbit', 0)
-            logger.debug("Orbit number = %s", orbit)
-            orbit_numbers.append(orbit)
-
-        # Test if there are more orbit numbers and at least log an info.
-        # FIXME!
-        return orbit_numbers[0]
 
     def _get_output_messages(self, sdr_files, input_msg, orbit_number):
         """Generate output messages from SDR files and input message, and return."""
@@ -186,6 +167,29 @@ class AtmsSdrRunner(Thread):
                 self.publisher.stop()
             except Exception:
                 logger.exception("Couldn't stop publisher.")
+
+
+def _fix_orbit_number(sdr_files, sdr_file_patterns):
+    """Get the orbit number from the SDR files produced with CSPP."""
+    s_pattern = get_tb_files_pattern(sdr_file_patterns)
+
+    p__ = Parser(s_pattern)
+    orbit_numbers = []
+    for filename in sdr_files:
+        bname = os.path.basename(str(filename))
+        logger.debug("SDR filename: %s", str(bname))
+        try:
+            result = p__.parse(bname)
+        except ValueError:
+            continue
+
+        orbit = result.get('orbit', 0)
+        logger.debug("Orbit number = %s", orbit)
+        orbit_numbers.append(orbit)
+
+    # Test if there are more orbit numbers and at least log an info.
+    # FIXME!
+    return orbit_numbers[0]
 
 
 def prepare_posttroll_message(input_msg):
@@ -327,7 +331,7 @@ def run_atms_from_message(posttroll_msg, sdr_call, sdr_options):
 
     sdr_proc.poll()
 
-    return cspp_workdir
+    return working_dir
 
 
 def get_filelist_from_collection(atms_collection):

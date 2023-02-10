@@ -35,6 +35,7 @@ from cspp_runner.atms_rdr2sdr_runner import get_filepaths
 from cspp_runner.atms_rdr2sdr_runner import run_atms_from_message
 from cspp_runner.atms_rdr2sdr_runner import get_filelist_from_collection
 from cspp_runner.atms_rdr2sdr_runner import move_files_to_destination
+from cspp_runner.atms_rdr2sdr_runner import _fix_orbit_number
 
 
 ATMS_FILENAMES = ['RATMS-RNSCA_j01_d20230208_t1154172_e1154492_b00001_c20230208115457829000_drlu_ops.h5',
@@ -74,8 +75,9 @@ def test_run_atms_from_message(caplog, monkeypatch, fake_cspp_workdir,
     sdr_call = 'atms_sdr.sh'
     sdr_options = ['-d', '-a']
     with caplog.at_level(logging.INFO):
-        run_atms_from_message(fake_atms_posttroll_message, sdr_call, sdr_options)
+        dirpath = run_atms_from_message(fake_atms_posttroll_message, sdr_call, sdr_options)
 
+    assert os.path.dirname(dirpath) == str(fake_cspp_workdir)
     res = caplog.text.strip().split('\n')
     assert len(res) == 4
 
@@ -154,3 +156,14 @@ def test_move_files_to_destination_pathlib(fake_yamlconfig_file, fake_sdr_homedi
     bnames.sort()
 
     assert bnames == expected
+
+
+def test_fix_orbit_number(fake_yamlconfig_file, fake_atms_sdr_files_one_pass):
+    """Test fixing the orbit number from the SDR filenames."""
+    config = read_config(fake_yamlconfig_file)
+    patterns = config['sdr_file_patterns']
+
+    sdr_files = glob(str(fake_atms_sdr_files_one_pass / '*h5'))
+
+    result = _fix_orbit_number(sdr_files, patterns)
+    assert result == 27088
