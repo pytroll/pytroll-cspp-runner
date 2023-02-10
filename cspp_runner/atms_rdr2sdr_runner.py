@@ -138,7 +138,8 @@ class AtmsSdrRunner(Thread):
             dataset = []
             for filepath in sdr_files:
                 sdrfile = {}
-                sdrfile['uri'] = 'ssh://{host}/{path}'.format(host=self.host, path=filepath)
+                # sdrfile['uri'] = 'ssh://{host}/{path}'.format(host=self.host, path=filepath)
+                sdrfile['uri'] = '{path}'.format(path=filepath)
                 sdrfile['uid'] = os.path.basename(filepath)
                 dataset.append(sdrfile)
 
