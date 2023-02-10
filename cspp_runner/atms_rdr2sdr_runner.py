@@ -119,13 +119,37 @@ class AtmsSdrRunner(Thread):
                 dest_sdr_files = move_files_to_destination(sdr_filepaths,
                                                            self.sdr_file_patterns, self._sdr_home)
 
-                output_messages = self._get_output_messages(dest_sdr_files, msg)
+                orbit_number = self._fix_orbit_number(dest_sdr_files, self.sdr_file_patterns)
+                output_messages = self._get_output_messages(dest_sdr_files, msg, orbit_number)
+
                 for output_msg in output_messages:
                     if output_msg:
                         logger.debug("Sending message: %s", str(output_msg))
                         self.publisher.send(str(output_msg))
 
-    def _get_output_messages(self, sdr_files, input_msg):
+    def _fix_orbit_number(self, sdr_files, sdr_file_patterns):
+        """Get the orbit number from the SDR files produced with CSPP."""
+        s_pattern = get_tb_files_pattern(sdr_file_patterns)
+
+        p__ = Parser(s_pattern)
+        orbit_numbers = []
+        for filename in sdr_files:
+            bname = os.path.basename(str(filename))
+            logger.debug("SDR filename: %s", str(bname))
+            try:
+                result = p__.parse(bname)
+            except ValueError:
+                continue
+
+            orbit = result.get('orbit', 0)
+            logger.debug("Orbit number = %s", orbit)
+            orbit_numbers.append(orbit)
+
+        # Test if there are more orbit numbers and at least log an info.
+        # FIXME!
+        return orbit_numbers[0]
+
+    def _get_output_messages(self, sdr_files, input_msg, orbit_number):
         """Generate output messages from SDR files and input message, and return."""
         out_messages = []
         for topic in self.output_topics:
@@ -141,6 +165,8 @@ class AtmsSdrRunner(Thread):
             to_send['format'] = 'SDR'
             to_send['data_processing_level'] = '1B'
             to_send['dataset'] = dataset
+            to_send['orig_orbit_number'] = to_send.get('orbit_number')
+            to_send['orbit_number'] = orbit_number
 
             pubmsg = Message(topic, 'dataset', to_send)
             out_messages.append(pubmsg)
@@ -184,13 +210,16 @@ def move_files_to_destination(sdr_filepaths, sdr_file_patterns, sdr_home):
     return glob(str(dirpath / "*"))
 
 
-def create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home):
-    """From the list of SDR files create a sub-directory where files should be moved."""
-    s_pattern = None
+def get_tb_files_pattern(sdr_file_patterns):
+    """Get the file name pattern for the TB SDR files (SATMS)."""
     for pattern in sdr_file_patterns:
         if pattern.startswith('S'):
-            s_pattern = pattern
-            break
+            return pattern
+
+
+def create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home):
+    """From the list of SDR files create a sub-directory where files should be moved."""
+    s_pattern = get_tb_files_pattern(sdr_file_patterns)
 
     start_time = datetime.now()
     p__ = Parser(s_pattern)
@@ -226,8 +255,9 @@ def get_filepaths(directory, msg_data, file_patterns):
     files = []
     for pattern in file_patterns:
         # p__ = Parser(pattern)
-        mda = {'orbit': msg_data['orbit_number'],
-               'platform_shortname': PLATFORM_SHORTNAMES.get(msg_data['platform_name'])}
+        # mda = {'orbit': msg_data['orbit_number'],
+        #        'platform_shortname': PLATFORM_SHORTNAMES.get(msg_data['platform_name'])}
+        mda = {'platform_shortname': PLATFORM_SHORTNAMES.get(msg_data['platform_name'])}
 
         # 'start_time': msg_data['start_time']} Here check for times, if
         # start/end times in the file names are sufficiently close to the
