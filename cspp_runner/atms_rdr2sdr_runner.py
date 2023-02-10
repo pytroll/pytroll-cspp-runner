@@ -116,8 +116,8 @@ class AtmsSdrRunner(Thread):
                 logger.debug("Start packing the files and publish")
 
                 sdr_filepaths = get_filepaths(wrkdir, msg.data, self.sdr_file_patterns)
-
-                dest_sdr_files = move_files_to_destination(sdr_filepaths, self.sdr_file_patterns, self._sdr_home)
+                dest_sdr_files = move_files_to_destination(sdr_filepaths,
+                                                           self.sdr_file_patterns, self._sdr_home)
 
                 output_messages = self._get_output_messages(dest_sdr_files, msg)
                 for output_msg in output_messages:
@@ -195,19 +195,20 @@ def create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home):
     start_time = datetime.now()
     p__ = Parser(s_pattern)
 
-    orbit = None
-    platform = None
+    orbit = 0
+    platform = 'unknown'
     for filename in sdr_filepaths:
         bname = os.path.basename(str(filename))
+        logger.debug("SDR filename: %s", str(bname))
         try:
             result = p__.parse(bname)
         except ValueError:
             continue
 
-        stime = result['start_time']
-        if stime < start_time:
+        stime = result.get('start_time')
+        if stime and stime < start_time:
             start_time = stime
-            orbit = result['orbit']
+            orbit = result.get('orbit', 0)
             platform = PLATFORM_LONGNAMES.get(result['platform_shortname'])
 
     subdirname = "{platform}_{dtime:%Y%m%d_%H%M}_{orbit:05d}".format(platform=platform.lower().replace('-', ''),
@@ -233,9 +234,11 @@ def get_filepaths(directory, msg_data, file_patterns):
         # actual ones from the messages
 
         glbstr = globify(pattern, mda)
+        logger.debug("Glob-string = %s", str(glbstr))
         flist = glob(os.path.join(directory, glbstr))
         files = files + flist
 
+    logger.debug("Files: %s", str(files))
     return files
 
 
