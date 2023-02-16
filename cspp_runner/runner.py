@@ -31,6 +31,7 @@ import stat
 import subprocess
 import tempfile
 import time
+import yaml
 from glob import glob
 from datetime import datetime, timedelta
 from multiprocessing.pool import ThreadPool
@@ -304,16 +305,22 @@ def publish_sdr(publisher, result_files, mda, site, mode,
         to_send["orbit_number"] = kwargs['orbit']
 
     to_send["dataset"] = []
+    start_times = set()
+    end_times = set()
     for result_file in result_files:
         filename = os.path.basename(result_file)
         to_send[
             'dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
                                                   result_file, '', '')),
                                'uid': filename})
+        (start_time, end_time) = get_sdr_times(filename)
+        start_times.add(start_time)
+        end_times.add(end_time)
     to_send['format'] = 'SDR'
     to_send['type'] = 'HDF5'
     to_send['data_processing_level'] = '1B'
-    to_send['start_time'], to_send['end_time'] = get_sdr_times(filename)
+    to_send['start_time'] = min(start_times)
+    to_send['end_time'] = max(end_times)
 
     LOG.debug('Site = %s', site)
     LOG.debug('Publish topic = %s', publish_topic)
@@ -580,6 +587,7 @@ def npp_rolling_runner(
         viirs_sdr_options,
         granule_time_tolerance=10,
         ncpus=1,
+        publisher_config=None
         ):
     """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
 
@@ -609,10 +617,16 @@ def npp_rolling_runner(
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
     viirs_proc = ViirsSdrProcessor(ncpus, level1_home)
 
+    if publisher_config is None:
+        pubconf = {"name": "viirs_dr_runner", "port": 0}
+    else:
+        with open(publisher_config, mode="rt", encoding="utf-8") as fp:
+            pubconf = yaml.safe_load(fp)
+
     LOG.debug("Subscribe topics = %s", str(subscribe_topics))
     with posttroll.subscriber.Subscribe('',
                                         subscribe_topics, True) as subscr:
-        with Publish('viirs_dr_runner', 0) as publisher:
+        with Publish(**pubconf) as publisher:
             while True:
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=300):

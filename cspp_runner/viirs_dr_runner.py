@@ -15,10 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Level-1 processing for VIIRS Suomi NPP Direct Readout data. Using the CSPP
+"""Pytroll processing converting VIIRS RDR to SDR using CSPP.
+
+Level-1 processing for VIIRS Suomi NPP Direct Readout data. Using the CSPP
 level-1 processor from the SSEC, Wisconsin, based on the ADL from the NASA DRL.
-Listen for pytroll messages from Nimbus (NPP file dispatch) and trigger
-processing on direct readout RDR data (granules or full swaths)
+Listen for pytroll messages from trollstalker, trollmoves, or other sources.
+Trigger processing on direct readout RDR data (granules or full swaths).
 """
 
 
@@ -47,7 +49,9 @@ LOG = logging.getLogger(__name__)
 
 def get_parser():
     """Get parser for commandline-arguments."""
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+            description=__doc__,
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-c", "--config-file",
                         required=True,
                         dest="config_file",
@@ -61,6 +65,8 @@ def get_parser():
                         type=str,
                         default=None,
                         help="The file to log to (stdout per default).")
+    parser.add_argument("-p", "--publisher", type=str,
+                        help="File with publisher config (YAML).")
     return parser
 
 
@@ -140,7 +146,8 @@ def main():
             viirs_sdr_call,
             viirs_sdr_options,
             int(OPTIONS.get("granule_time_tolerance", 10)),
-            int(OPTIONS.get("ncpus", 1))
+            int(OPTIONS.get("ncpus", 1)),
+            publisher_config=args.publisher,
             )
 
 
