@@ -640,6 +640,7 @@ def npp_rolling_runner(
 
                 LOG.debug(
                     "Received message data = %s", str(viirs_proc.message_data))
+                proc_start_time = datetime.utcnow()
                 tobj = viirs_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
@@ -661,6 +662,10 @@ def npp_rolling_runner(
 
                 make_okay_files(viirs_proc.sdr_home, subd)
 
+                LOG.info("Seconds to process SDR: {:.1f}".format(
+                    (datetime.utcnow() - proc_start_time).total_seconds()))
+                LOG.info("Seconds since granule start: {:.1f}".format(
+                    (datetime.utcnow() - tobj).total_seconds()))
                 LOG.info("Now that SDR processing has completed, " +
                          "check for new LUT files...")
                 fresh = check_lut_files(
