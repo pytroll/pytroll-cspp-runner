@@ -170,6 +170,22 @@ def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
 
 
 @pytest.mark.parametrize(
+        "funcname,label", [("update_lut_files", "LUT"),
+                           ("update_ancillary_files", "ANC")])
+def test_update_stampfile_fails(monkeypatch, tmp_path, caplog, funcname, label):
+    """Test update case when writing stampfile files."""
+    import cspp_runner.runner
+    updater = getattr(cspp_runner.runner, funcname)
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    stampfile = os.fspath(tmp_path / "stampfile" / "directory" / "does" / "not" / "exist")
+    with caplog.at_level(logging.INFO):
+        updater("gopher://dummy/location", stampfile, "echo")
+    assert (f"Failed to write {label:s}-update time-stamp file to "
+            f"{stampfile:s}" in caplog.text)
+    assert "No such file or directory" in caplog.text
+
+
+@pytest.mark.parametrize(
         "funcname", ["update_lut_files", "update_ancillary_files"])
 def test_update_error(monkeypatch, tmp_path, caplog, funcname):
     """Check that a failed LUT update is logged to stderr.

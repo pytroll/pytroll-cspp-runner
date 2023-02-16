@@ -190,8 +190,10 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         try:
             fpt = open(filename, "w")
             fpt.write(timestamp)
-        except OSError:
-            LOG.warning(f'Failed to write {what:s}-update time-stamp file')
+        except OSError as e:
+            LOG.warning(
+                f'Failed to write {what:s}-update time-stamp file to '
+                f"{filename!s}: {e.args[1]:s}")
             return
         else:
             fpt.close()
@@ -292,11 +294,11 @@ def publish_sdr(publisher, result_files, mda, site, mode,
     to_send = mda.copy()
     # Delete the RDR uri and uid from the message:
     try:
-        del(to_send['uri'])
+        del to_send['uri']
     except KeyError:
         LOG.warning("Couldn't remove URI from message")
     try:
-        del(to_send['uid'])
+        del to_send['uid']
     except KeyError:
         LOG.warning("Couldn't remove UID from message")
 
