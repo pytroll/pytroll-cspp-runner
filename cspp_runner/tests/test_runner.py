@@ -389,3 +389,7 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                     os.fspath(tmp_path / "stamp_lut"),
                     "true")
     assert "Dynamic ancillary data will be updated" in caplog.text
+    assert "Received message data" in caplog.text
+    assert "Now that SDR processing has completed" in caplog.text
+    assert "Seconds to process SDR: " in caplog.text
+    assert "Seconds since granule start: " in caplog.text
