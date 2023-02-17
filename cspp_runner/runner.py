@@ -193,7 +193,7 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         except OSError as e:
             LOG.warning(
                 f'Failed to write {what:s}-update time-stamp file to '
-                f"{filename!s}: {e.args[1]:s}")
+                f"{filename!s}: {e.strerror:s}")
             return
         else:
             fpt.close()
