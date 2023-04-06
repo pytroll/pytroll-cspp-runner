@@ -83,7 +83,8 @@ class AtmsSdrRunner(Thread):
 
     def _setup_and_start_communication(self):
         """Set up the Posttroll communication and start the publisher."""
-        logger.debug("Starting up... Input topics:")
+        logger.info("Starting up ATMS DR Runner")
+        logger.debug("Input topics:")
         for top in self.input_topics:
             logger.debug("{topic}".format(topic=str(top)))
 
@@ -309,7 +310,7 @@ def run_atms_from_message(posttroll_msg, sdr_call, sdr_options):
 
     t0_clock = time.process_time()
     t0_wall = time.time()
-    logger.info("Popen call arguments: " + str(cmdlist))
+    logger.debug("Popen call arguments: " + str(cmdlist))
 
     sdr_proc = subprocess.Popen(cmdlist, cwd=working_dir,
                                 env=my_env,
@@ -319,13 +320,13 @@ def run_atms_from_message(posttroll_msg, sdr_call, sdr_options):
         line = sdr_proc.stdout.readline()
         if not line:
             break
-        logger.info(line.decode("utf-8").strip('\n'))
+        logger.debug(line.decode("utf-8").strip('\n'))
 
     while True:
         errline = sdr_proc.stderr.readline()
         if not errline:
             break
-        logger.info(errline.decode("utf-8").strip('\n'))
+        logger.debug(errline.decode("utf-8").strip('\n'))
 
     logger.info("Seconds process time: " + (str(time.process_time() - t0_clock)))
     logger.info("Seconds wall clock time: " + (str(time.time() - t0_wall)))
