@@ -1,3 +1,22 @@
+#!/usr/bin/env python
+
+# Copyright (c) 2013 - 2023 Pytroll Developers
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Helper functions to fix orbit number in file name and inside hdf5 file."""
+
 import os
 from datetime import datetime, timedelta
 import re
@@ -10,12 +29,18 @@ LOG = logging.getLogger(__name__)
 
 
 class NoTleFile(Exception):
+    """Exception to catch if TLE file is not present."""
+
     pass
 
 
 TLE_SATNAME = {'npp': 'SUOMI NPP',
                'j01': 'NOAA-20',
-               'noaa20': 'NOAA-20'
+               'j02': 'NOAA-21',
+               'j03': 'NOAA-22',
+               'noaa20': 'NOAA-20',
+               'noaa21': 'NOAA-21',
+               'noaa22': 'NOAA-22'
                }
 
 TBUS_STYLE = False
@@ -24,6 +49,7 @@ _re_replace_orbitno = re.compile(r"_b(\d{5})")
 
 
 def replace_orbitno(filename):
+    """Replace Orbit number with the actual one in the hdf5 file."""
     stamp = get_npp_stamp(filename)
 
     # Correct h5 attributes
