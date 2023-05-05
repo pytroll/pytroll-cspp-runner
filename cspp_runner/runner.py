@@ -417,11 +417,11 @@ class ViirsSdrProcessor:
         self.cspp_results = []
         self.glist = []
         self.pass_start_time = None
-        self.result_files = []
+        # self.result_files = []
 
-    def pack_sdr_files(self, subd):
+    def pack_sdr_files(self, result_files, subd):
         """Pack the SDR files together in one directory per pass."""
-        return pack_sdr_files(self.result_files, self.sdr_home, subd)
+        return pack_sdr_files(result_files, self.sdr_home, subd)
 
     def run(self, msg, viirs_sdr_call, viirs_sdr_options,
             granule_time_tolerance=10):
@@ -643,34 +643,42 @@ def npp_rolling_runner(
                     if not status:
                         break  # end the loop and reinitialize !
 
-                LOG.debug(
-                    "Received message data = %s", str(viirs_proc.message_data))
-                proc_start_time = datetime.utcnow()
-                tobj = viirs_proc.pass_start_time
-                LOG.info("Time used in sub-dir name: " +
-                         str(tobj.strftime("%Y-%m-%d %H:%M")))
-                subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
-                                         orbit=viirs_proc.orbit_number)
-                LOG.info("Create sub-directory for sdr files: %s" % str(subd))
+                    LOG.debug("Number of finished granules not published yet: %d",
+                              len(viirs_proc.cspp_results))
+                    while len(viirs_proc.cspp_results) > 0:
+                        # result_dir, result_files = viirs_proc.cspp_results[0].get()
+                        # LOG.debug("Last granule ready: work-dir = %s", str(result_dir))
+                        result = viirs_proc.cspp_results.pop(0)
+                        # Now move and publish these files
+                        get_granule_and_publish_files(result, viirs_proc,
+                                                      publisher, site, mode, publish_topic)
+
+                # LOG.debug(
+                #    "Received message data = %s", str(viirs_proc.message_data))
+                # proc_start_time = datetime.utcnow()
+                # tobj = viirs_proc.pass_start_time
+                # LOG.info("Time used in sub-dir name: " +
+                #         str(tobj.strftime("%Y-%m-%d %H:%M")))
+                # subd = create_subdirname(tobj, platform_name=viirs_proc.platform_name,
+                #                         orbit=viirs_proc.orbit_number)
+                # LOG.info("Create sub-directory for sdr files: %s" % str(subd))
 
                 LOG.info("Get the results from the multiprocessing pool-run")
                 for res in viirs_proc.cspp_results:
-                    working_dir, tmp_result_files = res.get()
-                    viirs_proc.result_files = tmp_result_files
-                    sdr_files = viirs_proc.pack_sdr_files(subd)
-                    LOG.info("Cleaning up directory %s" % working_dir)
-                    cleanup_cspp_workdir(working_dir)
-                    publish_sdr(publisher, sdr_files,
-                                viirs_proc.message_data,
-                                site, mode, publish_topic,
-                                orbit=viirs_proc.orbit_number)
+                    get_granule_and_publish_files(res, viirs_proc, publisher, site, mode, publish_topic)
+                    # working_dir, tmp_result_files = res.get()
+                    # sdr_files = viirs_proc.pack_sdr_files(tmp_result_files, subd)
+                    # LOG.info("Cleaning up directory %s" % working_dir)
+                    # cleanup_cspp_workdir(working_dir)
+                    # publish_sdr(publisher, sdr_files,
+                    #             viirs_proc.message_data,
+                    #             site, mode, publish_topic,
+                    #             orbit=viirs_proc.orbit_number)
 
-                make_okay_files(viirs_proc.sdr_home, subd)
+                # make_okay_files(viirs_proc.sdr_home, subd)
 
-                LOG.info("Seconds to process SDR: {:.1f}".format(
-                    (datetime.utcnow() - proc_start_time).total_seconds()))
                 LOG.info("Seconds since granule start: {:.1f}".format(
-                    (datetime.utcnow() - tobj).total_seconds()))
+                    (datetime.utcnow() - viirs_proc.pass_start_time).total_seconds()))
                 LOG.info("Now that SDR processing has completed, " +
                          "check for new LUT files...")
                 fresh = check_lut_files(
@@ -692,3 +700,21 @@ def npp_rolling_runner(
                          "Start url fetch...")
                 update_ancillary_files(url_jpss_remote_anc_dir,
                                        anc_update_stampfile_prefix, mirror_jpss_ancillary)
+
+
+def get_granule_and_publish_files(res, viirs_proc, publisher, site, mode, publish_topic):
+    """Get granule files and publish."""
+    working_dir, tmp_result_files = res.get()
+
+    subd = create_subdirname(viirs_proc.pass_start_time,
+                             platform_name=viirs_proc.platform_name,
+                             orbit=viirs_proc.orbit_number)
+    LOG.info("Sub-directory for sdr files: %s" % str(subd))
+
+    sdr_files = viirs_proc.pack_sdr_files(tmp_result_files, subd)
+    LOG.info("Cleaning up directory %s" % working_dir)
+    cleanup_cspp_workdir(working_dir)
+    publish_sdr(publisher, sdr_files,
+                viirs_proc.message_data,
+                site, mode, publish_topic,
+                orbit=viirs_proc.orbit_number)

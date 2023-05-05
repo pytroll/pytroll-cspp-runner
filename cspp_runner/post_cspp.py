@@ -115,9 +115,7 @@ def make_okay_files(base_dir, subdir_name):
 
 
 def pack_sdr_files(sdrfiles, base_dir, subdir):
-    """Copy the SDR files to the sub-directory under the *subdir* directory
-    structure"""
-
+    """Copy the SDR files to the destination under the *subdir* directory structure."""
     path = pathlib.Path(base_dir) / subdir
     path.mkdir(exist_ok=True, parents=True)
 
