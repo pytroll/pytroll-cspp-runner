@@ -607,15 +607,20 @@ def npp_rolling_runner(
         LOG.info("...or download has been attempted recently! " +
                  "No url downloading....")
     else:
-        LOG.warning("Files in the LUT dir are non existent or old. " +
-                    "Start url fetch...")
-        update_lut_files(url_jpss_remote_lut_dir,
-                         lut_update_stampfile_prefix, mirror_jpss_luts)
+        if not mirror_jpss_luts:
+            LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
+        else:
+            LOG.warning("Files in the LUT dir are non existent or old. " +
+                        "Start url fetch...")
+            update_lut_files(url_jpss_remote_lut_dir,
+                             lut_update_stampfile_prefix, mirror_jpss_luts)
 
-    LOG.info("Dynamic ancillary data will be updated. " +
-             "Start url fetch...")
-    update_ancillary_files(url_jpss_remote_anc_dir,
-                           anc_update_stampfile_prefix, mirror_jpss_ancillary)
+    if not mirror_jpss_ancillary:
+        LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
+    else:
+        LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
+        update_ancillary_files(url_jpss_remote_anc_dir,
+                               anc_update_stampfile_prefix, mirror_jpss_ancillary)
 
     ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
@@ -681,14 +686,18 @@ def npp_rolling_runner(
                     LOG.info("...or download has been attempted recently! " +
                              "No url downloading....")
                 else:
-                    LOG.warning("Files in the LUT dir are " +
-                                "non existent or old. " +
-                                "Start url fetch...")
-                    update_lut_files(
-                        url_jpss_remote_lut_dir,
-                        lut_update_stampfile_prefix, mirror_jpss_luts)
+                    if not mirror_jpss_luts:
+                        LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
+                    else:
+                        LOG.warning("Files in the LUT dir are non existent or old. " +
+                                    "Start url fetch...")
+                        update_lut_files(
+                            url_jpss_remote_lut_dir,
+                            lut_update_stampfile_prefix, mirror_jpss_luts)
 
-                LOG.info("Dynamic ancillary data will be updated. " +
-                         "Start url fetch...")
-                update_ancillary_files(url_jpss_remote_anc_dir,
-                                       anc_update_stampfile_prefix, mirror_jpss_ancillary)
+                if not mirror_jpss_ancillary:
+                    LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
+                else:
+                    LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
+                    update_ancillary_files(url_jpss_remote_anc_dir,
+                                           anc_update_stampfile_prefix, mirror_jpss_ancillary)
