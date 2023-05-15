@@ -30,6 +30,7 @@ import multiprocessing
 import netifaces
 import pathlib
 import shutil
+import tempfile
 import stat
 import subprocess
 import time
@@ -308,6 +309,7 @@ class ViirsSdrProcessor:
         self.fullswath = False
         self.cspp_results = []
         self.glist = []
+        self.working_dir = None
         self.pass_start_time = None
         self.result_files = []
         self.sdr_home = level1_home
@@ -318,6 +320,7 @@ class ViirsSdrProcessor:
         self.fullswath = False
         self.cspp_results = []
         self.glist = []
+        self.working_dir = None
         self.pass_start_time = None
         self.platform_name = 'unknown'
         self.orbit_number = 0  # Initialised orbit number
@@ -408,23 +411,34 @@ class ViirsSdrProcessor:
                      "We assume it is a full local swath!")
             self.fullswath = True
 
-        working_dir = None
+        working_subdir_name = None
         start_time = get_datetime_from_filename(keeper)
         if self.pass_start_time is None:
             self.pass_start_time = start_time
             LOG.debug("Set the start time of the entire swath: %s",
                       self.pass_start_time.strftime('%Y-%m-%d %H:%M:%S'))
-            # Create the pass unique sub-directory (which will also be the working dir) if not already done:
-            working_dir = create_subdirname(self.pass_start_time, platform_name=self.platform_name,
-                                            orbit=self.orbit_number)
+            # Create the name of the pass unique sub-directory (which will also be the working dir) if not already done:
+            working_subdir_name = create_subdirname(self.pass_start_time, platform_name=self.platform_name,
+                                                    orbit=self.orbit_number)
         else:
             LOG.debug("Start time of the entire swath is not changed")
+
+        # Create the working directory if it doesn't exist already:
+        if not self.working_dir:
+            self.working_dir = pathlib.Path(self.sdr_home) / working_subdir_name
+            try:
+                self.working_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
+                self.working_dir = tempfile.mkdtemp(dir=cspp_workdir)
+                LOG.warning("Failed creating the requested working directory path. created this instead: %s",
+                            self.working_dir)
 
         LOG.info("Before call to spawn_cspp. Argument list = %s", str(keeper))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(
-            self.pool.apply_async(spawn_cspp, keeper,
-                                  {"working_dir": working_dir,
+            self.pool.apply_async(spawn_cspp, [keeper],
+                                  {"working_dir": self.working_dir,
                                    "publisher": publisher,
                                    "viirs_sdr_call": viirs_sdr_call,
                                    "viirs_sdr_options": viirs_sdr_options,
