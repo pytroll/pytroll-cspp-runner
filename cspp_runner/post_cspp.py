@@ -1,12 +1,16 @@
-"""Scanning the CSPP working directory and cleaning up after CSPP processing
-and move the SDR granules to a destination directory"""
+"""Various helper functions for re-organizing the CSPP results after processing.
+
+Scanning the CSPP working directory and cleaning up after CSPP processing
+and move the SDR granules to a destination directory.
+"""
 
 import os
 import pathlib
 import stat
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 from glob import glob
+from trollsift import Parser
 from cspp_runner.orbitno import TBUS_STYLE
 import logging
 LOG = logging.getLogger(__name__)
@@ -23,9 +27,13 @@ PLATFORM_NAME = {'Suomi-NPP': 'npp',
                  'NOAA-21': 'noaa21'}
 
 
-def cleanup_cspp_workdir(workdir):
-    """Clean up the CSPP working dir after processing"""
+VIIRS_SDR_FILE_PATTERN = '{dataset}_{platform_shortname}_d{start_time:%Y%m%d_t%H%M%S}{msec_start}_e{end_time:%H%M%S}{msec_end}_b{orbit:5d}_c{creation_time:%Y%m%d%H%M%S%f}_{source}.h5'  # noqa
 
+EXPECTED_NUMBER_OF_SDR_FILES = 28
+
+
+def cleanup_cspp_workdir(workdir):
+    """Clean up the CSPP working dir after processing."""
     filelist = glob('%s/*' % workdir)
     for s in filelist:
         if os.path.isfile(s):
@@ -39,19 +47,19 @@ def cleanup_cspp_workdir(workdir):
 
 
 def get_ivcdb_files(sdr_dir):
-    """Locate the ivcdb files need for the VIIRS Active Fires algorithm. These
-       files are not yet part of the standard output of CSPP versio 3.1 and
-       earlier. Use '-d' flag and locate the files in sub-directories
+    """Locate the ivcdb files needed for the VIIRS Active Fires algorithm.
 
+    Please observe: These files are not part of the standard output of CSPP
+    version 3.1 and earlier. Use '-d' flag and locate the files in
+    sub-directories.
     """
     # From the Active Fires Insuidetallation G:
     # find . -type f -name 'IVCDB*.h5' -exec mv {} ${PWD} \;
-
     import fnmatch
     import os
 
     matches = []
-    for root, dirnames, filenames in os.walk(sdr_dir):
+    for root, _, filenames in os.walk(sdr_dir):
         for filename in fnmatch.filter(filenames, 'IVCDB*.h5'):
             matches.append(os.path.join(root, filename))
 
@@ -59,27 +67,78 @@ def get_ivcdb_files(sdr_dir):
 
 
 def get_sdr_files(sdr_dir, **kwargs):
-    """Get the sdr filenames (all M- and I-bands plus geolocation for the
-    direct readout swath"""
+    """Get the sdr filenames (all M- and I-bands plus geolocation) for the direct readout swath."""
+    params = {}
+    params.update({'source': 'cspp_dev'})
+    params.update(kwargs)
+    # params.update({'start_time': kwargs.get('start_time')})
+    if 'start_time' in params and not params.get('start_time'):
+        params.pop('start_time')
+    params.update({'platform_short_name': PLATFORM_NAME.get(kwargs.get('platform_name'))})
+    try:
+        params.pop('platform_name')
+    except KeyError:
+        pass
 
-    # VIIRS M-bands + geolocation:
-    mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
-    # VIIRS I-bands + geolocation:
-    iband_files = (glob(os.path.join(sdr_dir, 'SVI??_???_*.h5')) +
-                   glob(os.path.join(sdr_dir, 'GI??O_???_*.h5')))
-    # VIIRS DNB band + geolocation:
-    dnb_files = (glob(os.path.join(sdr_dir, 'SVDNB_???_*.h5')) +
-                 glob(os.path.join(sdr_dir, 'GDNBO_???_*.h5')))
+    time_tolerance = kwargs.get('time_tolerance', timedelta(seconds=0))
+    if 'start_time' not in params or time_tolerance.total_seconds() == 0:
+        sdr_files = get_sdr_filenames_from_pattern_and_parameters(sdr_dir, params)
+        if len(sdr_files) < EXPECTED_NUMBER_OF_SDR_FILES:
+            LOG.error("No or not enough SDR files found matching the RDR granule: Files found = %s",
+                      str(sdr_files))
+        return sdr_files
 
-    ivcdb_files = get_ivcdb_files(sdr_dir)
+    sdr_files = get_sdr_filenames_from_pattern_and_parameters(sdr_dir, params)
+    nfiles_found = len(sdr_files)
+    if nfiles_found >= EXPECTED_NUMBER_OF_SDR_FILES:
+        return sdr_files
+
+    start_time = params['start_time']
+    LOG.warning("No or not enough SDR files found matching the RDR granule")
+    LOG.info("Will look for SDR files with a start time close in time to the start time of the RDR granule")
+    expected_start_time = start_time - time_tolerance
+    sdr_files = []
+    while nfiles_found < EXPECTED_NUMBER_OF_SDR_FILES and expected_start_time < start_time + time_tolerance:
+        params.update({'start_time': expected_start_time})
+        sdr_files = sdr_files + get_sdr_filenames_from_pattern_and_parameters(sdr_dir, params)
+        nfiles_found = len(sdr_files)
+        expected_start_time = expected_start_time + timedelta(seconds=1)
+
+    # FIXME: Check for sufficient files an possibly raise an exception if not successful.
+    return sdr_files
+
+
+def get_sdr_filenames_from_pattern_and_parameters(sdr_dir, params):
+    """From a list of file pattern inputs get the list of file names by globbing in a directory."""
+    p__ = Parser(VIIRS_SDR_FILE_PATTERN)
+
+    params.update({'dataset': 'SVM??'})
+    mband_files = [f for f in sdr_dir.glob(p__.globify(params))]
+    params.update({'dataset': 'GM??O'})
+    mband_files = mband_files + [f for f in sdr_dir.glob(p__.globify(params))]
+
+    params.update({'dataset': 'SVI??'})
+    iband_files = [f for f in sdr_dir.glob(p__.globify(params))]
+    params.update({'dataset': 'GI??O'})
+    iband_files = iband_files + [f for f in sdr_dir.glob(p__.globify(params))]
+
+    params.update({'dataset': 'SVDNB'})
+    dnb_files = [f for f in sdr_dir.glob(p__.globify(params))]
+    params.update({'dataset': 'GDNBO'})
+    dnb_files = dnb_files + [f for f in sdr_dir.glob(p__.globify(params))]
+
+    params.update({'dataset': 'IVCDB'})
+    ivcdb_files = [f for f in sdr_dir.glob(p__.globify(params))]
 
     return sorted(mband_files) + sorted(iband_files) + sorted(dnb_files) + sorted(ivcdb_files)
 
 
 def create_subdirname(obstime, with_seconds=False, **kwargs):
-    """Generate the pps subdirectory name from the start observation time, ex.:
-    'npp_20120405_0037_02270'"""
+    """Generate the pps subdirectory name from the start observation time.
+
+    For example:
+       'npp_20120405_0037_02270'
+    """
     sat = kwargs.get('platform_name', 'npp')
     platform_name = PLATFORM_NAME.get(sat, sat)
 
@@ -103,15 +162,6 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
         return platform_name + obstime.strftime('_%Y%m%d_%H%M%S_') + '%.5d' % orbnum
     else:
         return platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
-
-
-def make_okay_files(base_dir, subdir_name):
-    """Make okay file to signal that all SDR files have been placed in
-    destination directory"""
-    import subprocess
-    okfile = os.path.join(base_dir, subdir_name + ".okay")
-    subprocess.call(['touch', okfile])
-    return
 
 
 def pack_sdr_files(sdrfiles, base_dir, subdir):
@@ -157,4 +207,3 @@ if __name__ == "__main__":
 
     subd = create_subdirname(start_time)
     pack_sdr_files(FILES, rootdir, subd)
-    make_okay_files(rootdir, subd)

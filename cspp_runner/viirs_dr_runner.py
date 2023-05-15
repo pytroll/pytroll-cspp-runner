@@ -94,8 +94,6 @@ def main():
     subscribe_topics = OPTIONS.get('subscribe_topics').split(',')
     subscribe_topics = [topic for topic in subscribe_topics if topic]
 
-    site = OPTIONS.get('site')
-
     thr_lut_files_age_days = OPTIONS.get('threshold_lut_files_age_days', 14)
     url_jpss_remote_lut_dir = OPTIONS['url_jpss_remote_lut_dir']
     url_jpss_remote_anc_dir = OPTIONS['url_jpss_remote_anc_dir']
@@ -133,13 +131,11 @@ def main():
         lut_update_stampfile_prefix,
         lut_dir,
         url_jpss_remote_lut_dir,
-        OPTIONS["mirror_jpss_luts"],
+        OPTIONS.get("mirror_jpss_luts"),
         url_jpss_remote_anc_dir,
         anc_update_stampfile_prefix,
-        OPTIONS["mirror_jpss_ancillary"],
+        OPTIONS.get("mirror_jpss_ancillary"),
         subscribe_topics,
-        site,
-        OPTIONS["mode"],
         publish_topic,
         OPTIONS["level1_home"],
         viirs_sdr_call,
