@@ -688,26 +688,34 @@ def npp_rolling_runner(
                                         subscribe_topics, True) as subscr:
         with Publish(**pubconf) as publisher:
             while True:
+                LOG.debug("Re-initialise the viirs processor instance.")
                 viirs_proc.initialise()
                 for msg in subscr.recv(timeout=900):
+                    if msg is None:
+                        break
+
                     status = viirs_proc.run(
                         msg, publisher,
                         viirs_sdr_call, viirs_sdr_options,
                         granule_time_tolerance
                     )
                     LOG.debug("Sent message to run: %s", str(msg))
-                    LOG.debug("Status: %s", str(status))
+                    LOG.debug("Running: %s", str(status))
                     if not status:
                         break  # end the loop and reinitialize !
 
-                LOG.debug("No new rdr granules coming in...")
-                # LOG.info("Get the results from the multiprocessing pool-run")
+                LOG.info("No new rdr granules coming in...")
+                LOG.debug("Get the results from the multiprocessing pool-run")
+                for res in viirs_proc.cspp_results:
+                    result_files = res.get()
+                    if len(result_files) > 0:
+                        LOG.debug("Results on a granule ready. Number of files = %d. First file = %s",
+                                  len(result_files), result_files[0])
+                    else:
+                        LOG.error("Results on a granule ready, but no SDR files!")
 
                 LOG.info("Seconds since granule start: {:.1f}".format(
                     (datetime.utcnow() - viirs_proc.pass_start_time).total_seconds()))
-
-                # FIXME: The actuall processing is till ongoing in a number of threads...
-                # viirs_proc.pool.join()
 
                 LOG.info("Now that SDR processing has completed, check for new LUT files...")
                 fresh = check_lut_files(
@@ -715,8 +723,7 @@ def npp_rolling_runner(
                     lut_update_stampfile_prefix, lut_dir)
                 if fresh:
                     LOG.info("Files in the LUT dir are fresh...")
-                    LOG.info("...or download has been attempted recently! " +
-                             "No url downloading....")
+                    LOG.info("...or download has been attempted recently! No url downloading....")
                 else:
                     if not mirror_jpss_luts:
                         LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
