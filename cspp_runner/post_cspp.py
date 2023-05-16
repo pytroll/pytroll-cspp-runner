@@ -94,8 +94,8 @@ def get_sdr_files(sdr_dir, **kwargs):
         return sdr_files
 
     start_time = params['start_time']
-    LOG.warning("No or not enough SDR files found matching the RDR granule")
-    LOG.info("Will look for SDR files with a start time close in time to the start time of the RDR granule")
+    LOG.warning("No or not enough SDR files found matching the RDR granule: Files found = %d", nfiles_found)
+    LOG.info("Will look for SDR files with a start time close in time to the start time of the RDR granule.")
     expected_start_time = start_time - time_tolerance
     sdr_files = []
     while nfiles_found < EXPECTED_NUMBER_OF_SDR_FILES and expected_start_time < start_time + time_tolerance:
@@ -105,6 +105,12 @@ def get_sdr_files(sdr_dir, **kwargs):
         expected_start_time = expected_start_time + timedelta(seconds=1)
 
     # FIXME: Check for sufficient files an possibly raise an exception if not successful.
+    if nfiles_found == EXPECTED_NUMBER_OF_SDR_FILES:
+        LOG.debug("Expected number of SDR files found matching the RDR file.")
+    else:
+        LOG.error("Not enough SDR files found for the RDR scene: Files found = %d - Expected = %d",
+                  nfiles_found, EXPECTED_NUMBER_OF_SDR_FILES)
+
     return sdr_files
 
 
