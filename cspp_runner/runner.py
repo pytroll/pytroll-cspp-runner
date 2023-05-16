@@ -407,8 +407,7 @@ class ViirsSdrProcessor:
         # contains several granules (a full local swath):
         tdiff = end_time - start_time
         if tdiff.seconds > 4 * 60:
-            LOG.info("RDR file contains 3 or more granules. " +
-                     "We assume it is a full local swath!")
+            LOG.info("RDR file contains 3 or more granules. We assume it is a full local swath!")
             self.fullswath = True
 
         working_subdir_name = None
@@ -417,8 +416,10 @@ class ViirsSdrProcessor:
             self.pass_start_time = start_time
             LOG.debug("Set the start time of the entire swath: %s",
                       self.pass_start_time.strftime('%Y-%m-%d %H:%M:%S'))
-            # Create the name of the pass unique sub-directory (which will also be the working dir) if not already done:
-            working_subdir_name = create_subdirname(self.pass_start_time, platform_name=self.platform_name,
+            # Create the name of the pass unique sub-directory (which will also
+            # be the working dir) if not already done:
+            working_subdir_name = create_subdirname(self.pass_start_time,
+                                                    platform_name=self.platform_name,
                                                     orbit=self.orbit_number)
         else:
             LOG.debug("Start time of the entire swath is not changed")
@@ -672,9 +673,6 @@ def npp_rolling_runner(
     ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
     LOG.info("Will use %s CPUs when running CSPP instances" % str(ncpus))
-    print(ncpus)
-    print(level1_home)
-    print(publish_topic)
     viirs_proc = ViirsSdrProcessor(ncpus, level1_home, publish_topic)
 
     if publisher_config is None:
@@ -704,7 +702,14 @@ def npp_rolling_runner(
                     if not status:
                         break  # end the loop and reinitialize !
 
-                LOG.info("No new rdr granules coming in...")
+                if viirs_proc.pass_start_time:
+                    LOG.info("Seconds since granule start: {:.1f}".format(
+                        (datetime.utcnow() - viirs_proc.pass_start_time).total_seconds()))
+                else:
+                    LOG.debug("No start time for overpass set.")
+                    continue
+
+                LOG.info("No new rdr granules coming in anymore...")
                 LOG.debug("Get the results from the multiprocessing pool-run")
                 for res in viirs_proc.cspp_results:
                     result_files = res.get()
@@ -713,9 +718,6 @@ def npp_rolling_runner(
                                   len(result_files), result_files[0])
                     else:
                         LOG.error("Results on a granule ready, but no SDR files!")
-
-                LOG.info("Seconds since granule start: {:.1f}".format(
-                    (datetime.utcnow() - viirs_proc.pass_start_time).total_seconds()))
 
                 LOG.info("Now that SDR processing has completed, check for new LUT files...")
                 fresh = check_lut_files(
