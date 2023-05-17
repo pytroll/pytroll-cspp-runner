@@ -438,189 +438,100 @@ class ViirsSdrProcessor:
         LOG.info("Before call to spawn_cspp. Argument list = %s", str(keeper))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(
-            self.pool.apply_async(spawn_cspp, [keeper],
-                                  {"working_dir": self.working_dir,
-                                   "publisher": publisher,
+            self.pool.apply_async(self.spawn_cspp, [keeper],
+                                  {"publisher": publisher,
                                    "viirs_sdr_call": viirs_sdr_call,
                                    "viirs_sdr_options": viirs_sdr_options,
-                                   "platform_name": self.platform_name,
-                                   "orbit_number": self.orbit_number,
-                                   "message_data": self.message_data,
-                                   "publish_topic": self.publish_topic,
                                    "granule_time_tolerance": granule_time_tolerance
                                    }))
 
+        LOG.debug("Return from run call...")
         return True
 
-    # def spawn_cspp(self, current_granule, working_dir, publisher,
-    #                viirs_sdr_call, viirs_sdr_options, **kwargs):
-    #     """Spawn a CSPP run on the set of RDR files given."""
-    #     # Get start time and platform name from RDR file name
-    #     LOG.info("Current granule = " + str(current_granule))
+    def spawn_cspp(self, current_granule, publisher,
+                   viirs_sdr_call, viirs_sdr_options, **kwargs):
+        """Spawn a CSPP run on the set of RDR files given."""
+        # Get start time and platform name from RDR file name
+        LOG.info("Current granule = " + str(current_granule))
 
-    #     start_time = get_datetime_from_filename(current_granule)
-    #     LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
-    #     sec_tolerance = int(kwargs.get('granule_time_tolerance', 10))
-    #     LOG.info("Time tolerance to identify which SDR granule belong " +
-    #              "to the RDR granule being processed: " + str(sec_tolerance))
+        start_time = get_datetime_from_filename(current_granule)
+        LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
+        sec_tolerance = int(kwargs.get('granule_time_tolerance', 10))
+        LOG.info("Time tolerance to identify which SDR granule belong " +
+                 "to the RDR granule being processed: " + str(sec_tolerance))
 
-    #     LOG.info("Start CSPP: RDR files = %s", str(current_granule))
-    #     run_cspp(working_dir, viirs_sdr_call, viirs_sdr_options, current_granule)
-    #     LOG.info("CSPP SDR processing finished...")
-    #     # Assume everything has gone well!
-    #     new_result_files = get_sdr_files(working_dir,
-    #                                      platform_name=self.platform_name,
-    #                                      start_time=start_time,
-    #                                      time_tolerance=timedelta(seconds=sec_tolerance))
-    #     LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
-    #     if len(new_result_files) == 0:
-    #         LOG.warning("No SDR files available. CSPP probably failed!")
-    #         return []
+        LOG.info("Start CSPP: RDR files = %s", str(current_granule))
+        run_cspp(self.working_dir, viirs_sdr_call, viirs_sdr_options, current_granule)
+        LOG.info("CSPP SDR processing finished...")
+        # Assume everything has gone well!
+        new_result_files = get_sdr_files(self.working_dir,
+                                         platform_name=self.platform_name,
+                                         start_time=start_time,
+                                         time_tolerance=timedelta(seconds=sec_tolerance))
+        LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
+        if len(new_result_files) == 0:
+            LOG.warning("No SDR files available. CSPP probably failed!")
+            return []
 
-    #     LOG.info("Number of SDR results files = " + str(len(new_result_files)))
-    #     # Now start publish the files:
-    #     self.publish_sdr(publisher, new_result_files)
+        LOG.info("Number of SDR results files = " + str(len(new_result_files)))
+        # Now start publish the files:
+        self.publish_sdr(publisher, new_result_files)
 
-    #     return new_result_files
+        LOG.debug("Return all SDR result files.")
+        return new_result_files
 
-    # def publish_sdr(self, publisher, result_files):
-    #     """Publish the messages that SDR files are ready."""
-    #     if not result_files:
-    #         return
+    def publish_sdr(self, publisher, result_files):
+        """Publish the messages that SDR files are ready."""
+        if not result_files:
+            return
 
-    #     # Now publish:
-    #     to_send = self.message_data.copy()
-    #     # Delete the RDR uri and uid from the message:
-    #     try:
-    #         del (to_send['uri'])
-    #     except KeyError:
-    #         LOG.warning("Couldn't remove URI from message")
-    #     try:
-    #         del (to_send['uid'])
-    #     except KeyError:
-    #         LOG.warning("Couldn't remove UID from message")
+        # Now publish:
+        to_send = self.message_data.copy()
+        # Delete the RDR uri and uid from the message:
+        try:
+            del (to_send['uri'])
+        except KeyError:
+            LOG.warning("Couldn't remove URI from message")
+        try:
+            del (to_send['uid'])
+        except KeyError:
+            LOG.warning("Couldn't remove UID from message")
 
-    #     if self.orbit_number > 0:
-    #         to_send["orig_orbit_number"] = to_send["orbit_number"]
-    #         to_send["orbit_number"] = self.orbit_number
+        if self.orbit_number > 0:
+            to_send["orig_orbit_number"] = to_send["orbit_number"]
+            to_send["orbit_number"] = self.orbit_number
 
-    #     to_send["dataset"] = []
-    #     start_times = set()
-    #     end_times = set()
+        to_send["dataset"] = []
+        start_times = set()
+        end_times = set()
 
-    #     for result_file in result_files:
-    #         filename = os.path.basename(result_file)
-    #         to_send[
-    #             'dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
-    #                                                   str(result_file), '', '')),
-    #                                'uid': filename})
-    #         (start_time, end_time) = get_sdr_times(filename)
-    #         start_times.add(start_time)
-    #         end_times.add(end_time)
+        for result_file in result_files:
+            filename = os.path.basename(result_file)
+            to_send[
+                'dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
+                                                      str(result_file), '', '')),
+                                   'uid': filename})
+            (start_time, end_time) = get_sdr_times(filename)
+            start_times.add(start_time)
+            end_times.add(end_time)
 
-    #     to_send['format'] = 'SDR'
-    #     to_send['type'] = 'HDF5'
-    #     to_send['data_processing_level'] = '1B'
-    #     to_send['start_time'] = min(start_times)
-    #     to_send['end_time'] = max(end_times)
+        to_send['format'] = 'SDR'
+        to_send['type'] = 'HDF5'
+        to_send['data_processing_level'] = '1B'
+        to_send['start_time'] = min(start_times)
+        to_send['end_time'] = max(end_times)
 
-    #     LOG.debug('Publish topic = %s', self.publish_topic)
-    #     msg = Message('/'.join(('',
-    #                             self.publish_topic,
-    #                             to_send['format'],
-    #                             to_send['data_processing_level'],
-    #                             'polar',
-    #                             'direct_readout')),
-    #                   "dataset", to_send).encode()
-    #     LOG.debug("sending: " + str(msg))
-    #     publisher.send(msg)
-
-
-def spawn_cspp(current_granule, working_dir, publisher,
-               viirs_sdr_call, viirs_sdr_options, **kwargs):
-    """Spawn a CSPP run on the set of RDR files given."""
-    # Get start time and platform name from RDR file name
-    LOG.info("Current granule = " + str(current_granule))
-
-    start_time = get_datetime_from_filename(current_granule)
-    LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
-    sec_tolerance = int(kwargs.get('granule_time_tolerance', 10))
-    LOG.info("Time tolerance to identify which SDR granule belong " +
-             "to the RDR granule being processed: " + str(sec_tolerance))
-
-    publish_topic = kwargs.get("publish_topic")
-    LOG.info("Start CSPP: RDR files = %s", str(current_granule))
-    run_cspp(working_dir, viirs_sdr_call, viirs_sdr_options, current_granule)
-    LOG.info("CSPP SDR processing finished...")
-    # Assume everything has gone well!
-    new_result_files = get_sdr_files(working_dir,
-                                     platform_name=kwargs.get('platform_name'),
-                                     start_time=start_time,
-                                     time_tolerance=timedelta(seconds=sec_tolerance))
-    LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
-    if len(new_result_files) == 0:
-        LOG.warning("No SDR files available. CSPP probably failed!")
-        return []
-
-    LOG.info("Number of SDR results files = " + str(len(new_result_files)))
-    # Now start publish the files:
-    publish_sdr(publisher, publish_topic,
-                kwargs.get("message_data"), kwargs.get('orbit_number'), new_result_files)
-
-    return new_result_files
-
-
-def publish_sdr(publisher, publish_topic, message_data, orbit_number, result_files):
-    """Publish the messages that SDR files are ready."""
-    if not result_files:
-        return
-
-    # Now publish:
-    to_send = message_data.copy()
-    # Delete the RDR uri and uid from the message:
-    try:
-        del (to_send['uri'])
-    except KeyError:
-        LOG.warning("Couldn't remove URI from message")
-    try:
-        del (to_send['uid'])
-    except KeyError:
-        LOG.warning("Couldn't remove UID from message")
-
-    if orbit_number > 0:
-        to_send["orig_orbit_number"] = to_send["orbit_number"]
-        to_send["orbit_number"] = orbit_number
-
-    to_send["dataset"] = []
-    start_times = set()
-    end_times = set()
-
-    for result_file in result_files:
-        filename = os.path.basename(result_file)
-        to_send[
-            'dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
-                                                  str(result_file), '', '')),
-                               'uid': filename})
-        (start_time, end_time) = get_sdr_times(filename)
-        start_times.add(start_time)
-        end_times.add(end_time)
-
-    to_send['format'] = 'SDR'
-    to_send['type'] = 'HDF5'
-    to_send['data_processing_level'] = '1B'
-    to_send['start_time'] = min(start_times)
-    to_send['end_time'] = max(end_times)
-
-    LOG.debug('Publish topic = %s', publish_topic)
-    msg = Message('/'.join(('',
-                            publish_topic,
-                            to_send['format'],
-                            to_send['data_processing_level'],
-                            'polar',
-                            'direct_readout')),
-                  "dataset", to_send).encode()
-    LOG.debug("sending: " + str(msg))
-    publisher.send(msg)
+        LOG.debug('Publish topic = %s', self.publish_topic)
+        msg = Message('/'.join(('',
+                                self.publish_topic,
+                                to_send['format'],
+                                to_send['data_processing_level'],
+                                'polar',
+                               'direct_readout')),
+                      "dataset", to_send).encode()
+        LOG.debug("sending: " + str(msg))
+        publisher.send(msg)
+        LOG.debug("After having published/sent message.")
 
 
 def npp_rolling_runner(
@@ -649,26 +560,15 @@ def npp_rolling_runner(
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
     LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(thr_lut_files_age_days))
 
-    fresh = check_lut_files(
-        thr_lut_files_age_days, url_download_trial_frequency_hours,
-        lut_update_stampfile_prefix, lut_dir)
-    if fresh:
-        LOG.info("Files in the LUT dir are fresh...")
-        LOG.info("...or download has been attempted recently! No url downloading....")
-    else:
-        if not mirror_jpss_luts:
-            LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
-        else:
-            LOG.warning("Files in the LUT dir are non existent or old. Start url fetch...")
-            update_lut_files(url_jpss_remote_lut_dir,
-                             lut_update_stampfile_prefix, mirror_jpss_luts)
-
-    if not mirror_jpss_ancillary:
-        LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
-    else:
-        LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
-        update_ancillary_files(url_jpss_remote_anc_dir,
-                               anc_update_stampfile_prefix, mirror_jpss_ancillary)
+    prepare_cspp_ancillary_data_for_sdr_processing(thr_lut_files_age_days,
+                                                   url_download_trial_frequency_hours,
+                                                   lut_update_stampfile_prefix,
+                                                   lut_dir,
+                                                   mirror_jpss_luts,
+                                                   url_jpss_remote_lut_dir,
+                                                   url_jpss_remote_anc_dir,
+                                                   anc_update_stampfile_prefix,
+                                                   mirror_jpss_ancillary)
 
     ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
@@ -688,10 +588,7 @@ def npp_rolling_runner(
             while True:
                 LOG.debug("Re-initialise the viirs processor instance.")
                 viirs_proc.initialise()
-                for msg in subscr.recv(timeout=900):
-                    if msg is None:
-                        break
-
+                for msg in subscr.recv(timeout=300):
                     status = viirs_proc.run(
                         msg, publisher,
                         viirs_sdr_call, viirs_sdr_options,
@@ -720,23 +617,44 @@ def npp_rolling_runner(
                         LOG.error("Results on a granule ready, but no SDR files!")
 
                 LOG.info("Now that SDR processing has completed, check for new LUT files...")
-                fresh = check_lut_files(
-                    thr_lut_files_age_days, url_download_trial_frequency_hours,
-                    lut_update_stampfile_prefix, lut_dir)
-                if fresh:
-                    LOG.info("Files in the LUT dir are fresh...")
-                    LOG.info("...or download has been attempted recently! No url downloading....")
-                else:
-                    if not mirror_jpss_luts:
-                        LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
-                    else:
-                        LOG.warning("Files in the LUT dir are non existent or old. Start url fetch...")
-                        update_lut_files(url_jpss_remote_lut_dir,
-                                         lut_update_stampfile_prefix, mirror_jpss_luts)
 
-                if not mirror_jpss_ancillary:
-                    LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
-                else:
-                    LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
-                    update_ancillary_files(url_jpss_remote_anc_dir,
-                                           anc_update_stampfile_prefix, mirror_jpss_ancillary)
+                prepare_cspp_ancillary_data_for_sdr_processing(thr_lut_files_age_days,
+                                                               url_download_trial_frequency_hours,
+                                                               lut_update_stampfile_prefix,
+                                                               lut_dir,
+                                                               mirror_jpss_luts,
+                                                               url_jpss_remote_lut_dir,
+                                                               url_jpss_remote_anc_dir,
+                                                               anc_update_stampfile_prefix,
+                                                               mirror_jpss_ancillary)
+
+
+def prepare_cspp_ancillary_data_for_sdr_processing(thr_lut_files_age_days,
+                                                   url_download_trial_frequency_hours,
+                                                   lut_update_stampfile_prefix, lut_dir,
+                                                   mirror_jpss_luts,
+                                                   url_jpss_remote_lut_dir,
+                                                   url_jpss_remote_anc_dir,
+                                                   anc_update_stampfile_prefix,
+                                                   mirror_jpss_ancillary):
+    """Check if LUTs and/or Ancillary data needs to be updated and update if needed."""
+    fresh = check_lut_files(
+        thr_lut_files_age_days, url_download_trial_frequency_hours,
+        lut_update_stampfile_prefix, lut_dir)
+    if fresh:
+        LOG.info("Files in the LUT dir are fresh...")
+        LOG.info("...or download has been attempted recently! No url downloading....")
+    else:
+        if not mirror_jpss_luts:
+            LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
+        else:
+            LOG.warning("Files in the LUT dir are non existent or old. Start url fetch...")
+            update_lut_files(url_jpss_remote_lut_dir,
+                             lut_update_stampfile_prefix, mirror_jpss_luts)
+
+    if not mirror_jpss_ancillary:
+        LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
+    else:
+        LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
+        update_ancillary_files(url_jpss_remote_anc_dir,
+                               anc_update_stampfile_prefix, mirror_jpss_ancillary)

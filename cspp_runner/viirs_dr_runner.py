@@ -125,6 +125,8 @@ def main():
     logging.getLogger('').setLevel(logging.DEBUG)
     logging.getLogger('posttroll').setLevel(logging.INFO)
 
+    # Update ancillary data and LUTs here first!
+
     npp_rolling_runner(
         thr_lut_files_age_days,
         url_download_trial_frequency_hours,
