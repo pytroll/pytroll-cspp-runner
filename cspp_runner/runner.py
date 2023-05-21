@@ -27,15 +27,11 @@ import os
 import socket
 import logging
 import multiprocessing
-import netifaces
 import pathlib
-import shutil
 import tempfile
-import stat
 import subprocess
 import time
 import yaml
-from glob import glob
 from datetime import datetime, timedelta
 from multiprocessing.pool import ThreadPool
 from urllib.parse import urlunsplit, urlparse
@@ -54,10 +50,13 @@ from cspp_runner.post_cspp import (get_sdr_files,
                                    pack_sdr_files)
 from cspp_runner.pre_cspp import fix_rdrfile
 
+from cspp_runner.cspp_utils import get_local_ips
+from cspp_runner.cspp_utils import CSPPAncillaryDataUpdater
+
+
 PATH = os.environ.get('PATH', '')
 
 CSPP_SDR_HOME = os.environ.get("CSPP_SDR_HOME", '')
-CSPP_RT_SDR_LUTS = os.path.join(CSPP_SDR_HOME, 'anc/cache/incoming_luts')
 APPL_HOME = os.environ.get('NPP_SDRPROC', '')
 
 VIIRS_SATELLITES = ['Suomi-NPP', 'NOAA-20', 'NOAA-21']
@@ -71,177 +70,6 @@ _DEFAULT_LOG_FORMAT = '[%(levelname)s: %(asctime)s : %(name)s] %(message)s'
 _NPP_SDRPROC_LOG_FILE = os.environ.get('NPP_SDRPROC_LOG_FILE', None)
 
 LOG = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-def check_lut_files(thr_days, url_download_trial_frequency_hours,
-                    lut_update_stampfile_prefix, lut_dir):
-    """Check if LUT files are present and fresh.
-
-    Check if the LUT files under ${path_to_cspp_cersion}/anc/cache/luts are
-    available and check if they are fresh. Return True if fresh/new files
-    exists, otherwise False.
-    It is files like these (with incredible user-unfriendly) names:
-    510fc93d-8e4ed-6880946f-f2cdb929.asc
-    510fc93d-8e4ed-6880946f-f2cdb929.VIIRS-SDR-GAIN-LUT_npp_20120217000000Z_20120220000001Z_ee00000000000000Z_PS-1-N-CCR-12-330-JPSS-DPA-002-PE-_noaa_all_all-_all.bin
-    etc...
-
-    We do not yet know if these files are always having the same name or if the
-    number of files are expected to always be the same!?  Thus searching and
-    checking is a bit difficult. We check if there are any files at all, and then
-    how old the latest file is, and hope that this is sufficient.
-
-    """  # noqa
-    now = datetime.utcnow()
-
-    tdelta = timedelta(
-        seconds=float(url_download_trial_frequency_hours) * 3600.)
-    # Get the time of the last update trial:
-    files = glob(lut_update_stampfile_prefix + '*')
-    # Can we count on glob sorting the most recent file first. In case we can,
-    # we don't need to check the full history of time stamp files. This will
-    # save time! Currently we check all files...
-    # FIXME!
-    update_it = True
-    for filename in files:
-        tslot = datetime.strptime(
-            os.path.basename(filename).split('.')[-1], '%Y%m%d%H%M')
-        if now - tslot < tdelta:
-            update_it = False
-            break
-
-    if not update_it:
-        LOG.info('An URL update trial has been attempted recently. Continue')
-        return True
-
-    LOG.info('No update trial seems to have been attempted recently')
-    tdelta = timedelta(days=int(thr_days))
-
-    files_ok = True
-    LOG.info("Directory " + str(lut_dir) + "...")
-    files = glob(os.path.join(lut_dir, '*'))
-    if len(files) == 0:
-        LOG.info("No LUT files available!")
-        return False
-
-    filename = files[0]
-    tstamp = os.stat(filename)[stat.ST_MTIME]
-    first_time = datetime.utcfromtimestamp(tstamp)
-    # tstamp = os.stat(files[-1])[stat.ST_MTIME]
-    # last_time = datetime.utcfromtimestamp(tstamp)
-
-    if (now - first_time) > tdelta:
-        LOG.info("File too old! File=%s " % filename)
-        files_ok = False
-
-    return files_ok
-
-
-def update_lut_files(url_jpss_remote_lut_dir,
-                     lut_update_stampfile_prefix, mirror_jpss_luts,
-                     timeout=600):
-    """Update LUT files for VIIRS processing.
-
-    Updates the ancillary LUT files over internet.
-
-    These files need to be updated at least once every week, in order to
-    achieve the best possible SDR processing.
-
-    """
-    update_files(
-        url_jpss_remote_lut_dir,
-        lut_update_stampfile_prefix,
-        mirror_jpss_luts,
-        "LUT",
-        timeout=timeout)
-
-
-def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
-                 what, timeout=600):
-    """Do the update of the LUT files on disk.
-
-    Runs the fetch over internet from a separate working directory, and calls
-    the JPSS script in a separat shell.
-
-    """
-    _check_environment("CSPP_WORKDIR")
-    cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
-    pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
-    my_env = os.environ.copy()
-    my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_dir
-
-    LOG.info(f"Start downloading {what:s}....")
-    cmd = [shutil.which(mirror_jpss), "-W", cspp_workdir]
-    LOG.info(f"Download command for {what:s}: {cmd!s}")
-
-    proc = subprocess.Popen(
-        cmd, shell=False, env=my_env,
-        cwd=cspp_workdir,
-        stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-
-    while (line := proc.stdout.readline()):
-        LOG.info(line.decode("utf-8").strip('\n'))
-    while (line := proc.stderr.readline()):
-        LOG.error(line.decode("utf-8").strip('\n'))
-
-    try:
-        returncode = proc.wait(timeout)
-    except subprocess.TimeoutExpired:
-        LOG.exception(f"Attempt to update {what:s} files timed out. ")
-
-    if returncode != 0:
-        LOG.exception(
-            f"Attempt to update {what:s} files failed with exit code "
-            f"{returncode:d}.")
-    else:
-        now = datetime.utcnow()
-        timestamp = now.strftime('%Y%m%d%H%M')
-        filename = update_stampfile_prefix + '.' + timestamp
-        try:
-            fpt = open(filename, "w")
-            fpt.write(timestamp)
-        except OSError:
-            LOG.warning(f'Failed to write {what:s}-update time-stamp file')
-            return
-        else:
-            fpt.close()
-
-        LOG.info(f"{what:s} downloaded. {what:s}-update timestamp file = " + filename)
-
-
-def _check_environment(*args):
-    """Check that requested environment variables are set.
-
-    Raise EnvironmentError if they are not.
-    """
-    missing = set()
-    for arg in args:
-        if arg not in os.environ:
-            missing.add(arg)
-    if missing:
-        raise EnvironmentError("Missing environment variables: " +
-                               ", ".join(missing))
-
-
-def update_ancillary_files(url_jpss_remote_anc_dir,
-                           anc_update_stampfile_prefix, mirror_jpss_ancillary,
-                           timeout=600):
-    """Update the dynamic ancillary files needed for CSPP VIIRS SDR processing.
-
-    These data files encompass Two Line Element (TLE) and Polar Wander (PW)
-    files, and should preferably be updated daily. This is done automatically
-    in CSPP if the viirs_sdr script is run without the '-l' option. However, to
-    slightly speed up the processing and avoid hangups depending on internet
-    connectivity this script can omit the automatic download (using the '-l'
-    option) and thus the files need to be updated outside the script.
-
-    """
-    update_files(
-        url_jpss_remote_anc_dir,
-        anc_update_stampfile_prefix,
-        mirror_jpss_ancillary,
-        "ANC",
-        timeout=timeout)
 
 
 def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_file):
@@ -281,18 +109,6 @@ def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_file):
     viirs_sdr_proc.poll()
 
     return
-
-
-def get_local_ips():
-    """Get the local IP address of where CSPP is running."""
-    inet_addrs = [netifaces.ifaddresses(iface).get(netifaces.AF_INET)
-                  for iface in netifaces.interfaces()]
-    ips = []
-    for addr in inet_addrs:
-        if addr is not None:
-            for add in addr:
-                ips.append(add['addr'])
-    return ips
 
 
 class ViirsSdrProcessor:
@@ -438,12 +254,17 @@ class ViirsSdrProcessor:
         LOG.info("Before call to spawn_cspp. Argument list = %s", str(keeper))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(
-            self.pool.apply_async(self.spawn_cspp, [keeper],
-                                  {"publisher": publisher,
-                                   "viirs_sdr_call": viirs_sdr_call,
-                                   "viirs_sdr_options": viirs_sdr_options,
-                                   "granule_time_tolerance": granule_time_tolerance
-                                   }))
+            # self.pool.apply_async(self.spawn_cspp, [keeper],
+            #                       {"publisher": publisher,
+            #                        "viirs_sdr_call": viirs_sdr_call,
+            #                        "viirs_sdr_options": viirs_sdr_options,
+            #                        "granule_time_tolerance": granule_time_tolerance
+            #                        }))
+            self.pool.apply_async(self.spawn_cspp,
+                                  args=(keeper, publisher,
+                                        viirs_sdr_call,
+                                        viirs_sdr_options),
+                                  kwds={"granule_time_tolerance": granule_time_tolerance}))
 
         LOG.debug("Return from run call...")
         return True
@@ -560,15 +381,19 @@ def npp_rolling_runner(
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
     LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(thr_lut_files_age_days))
 
-    prepare_cspp_ancillary_data_for_sdr_processing(thr_lut_files_age_days,
-                                                   url_download_trial_frequency_hours,
-                                                   lut_update_stampfile_prefix,
-                                                   lut_dir,
-                                                   mirror_jpss_luts,
-                                                   url_jpss_remote_lut_dir,
-                                                   url_jpss_remote_anc_dir,
-                                                   anc_update_stampfile_prefix,
-                                                   mirror_jpss_ancillary)
+    luts_acillary_kwargs = {}
+    luts_acillary_kwargs['thr_lut_files_age_days'] = thr_lut_files_age_days
+    luts_acillary_kwargs['url_download_trial_frequency_hours'] = url_download_trial_frequency_hours
+    luts_acillary_kwargs['lut_update_stampfile_prefix'] = lut_update_stampfile_prefix
+    luts_acillary_kwargs['lut_dir'] = lut_dir
+    luts_acillary_kwargs['mirror_jpss_luts'] = mirror_jpss_luts
+    luts_acillary_kwargs['url_jpss_remote_anc_dir'] = url_jpss_remote_anc_dir
+    luts_acillary_kwargs['anc_update_stampfile_prefix'] = anc_update_stampfile_prefix
+    luts_acillary_kwargs['mirror_jpss_ancillary'] = mirror_jpss_ancillary
+
+    updater = CSPPAncillaryDataUpdater(**luts_acillary_kwargs)
+    updater.update_luts()
+    updater.update_ancillary_data()
 
     ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
@@ -599,6 +424,7 @@ def npp_rolling_runner(
                     if not status:
                         break  # end the loop and reinitialize !
 
+                # LOG.debug("pass start time = %s", str(viirs_proc.pass_start_time))
                 if viirs_proc.pass_start_time:
                     LOG.info("Seconds since granule start: {:.1f}".format(
                         (datetime.utcnow() - viirs_proc.pass_start_time).total_seconds()))
@@ -618,43 +444,6 @@ def npp_rolling_runner(
 
                 LOG.info("Now that SDR processing has completed, check for new LUT files...")
 
-                prepare_cspp_ancillary_data_for_sdr_processing(thr_lut_files_age_days,
-                                                               url_download_trial_frequency_hours,
-                                                               lut_update_stampfile_prefix,
-                                                               lut_dir,
-                                                               mirror_jpss_luts,
-                                                               url_jpss_remote_lut_dir,
-                                                               url_jpss_remote_anc_dir,
-                                                               anc_update_stampfile_prefix,
-                                                               mirror_jpss_ancillary)
-
-
-def prepare_cspp_ancillary_data_for_sdr_processing(thr_lut_files_age_days,
-                                                   url_download_trial_frequency_hours,
-                                                   lut_update_stampfile_prefix, lut_dir,
-                                                   mirror_jpss_luts,
-                                                   url_jpss_remote_lut_dir,
-                                                   url_jpss_remote_anc_dir,
-                                                   anc_update_stampfile_prefix,
-                                                   mirror_jpss_ancillary):
-    """Check if LUTs and/or Ancillary data needs to be updated and update if needed."""
-    fresh = check_lut_files(
-        thr_lut_files_age_days, url_download_trial_frequency_hours,
-        lut_update_stampfile_prefix, lut_dir)
-    if fresh:
-        LOG.info("Files in the LUT dir are fresh...")
-        LOG.info("...or download has been attempted recently! No url downloading....")
-    else:
-        if not mirror_jpss_luts:
-            LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
-        else:
-            LOG.warning("Files in the LUT dir are non existent or old. Start url fetch...")
-            update_lut_files(url_jpss_remote_lut_dir,
-                             lut_update_stampfile_prefix, mirror_jpss_luts)
-
-    if not mirror_jpss_ancillary:
-        LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
-    else:
-        LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
-        update_ancillary_files(url_jpss_remote_anc_dir,
-                               anc_update_stampfile_prefix, mirror_jpss_ancillary)
+                updater = CSPPAncillaryDataUpdater(**luts_acillary_kwargs)
+                updater.update_luts()
+                updater.update_ancillary_data()

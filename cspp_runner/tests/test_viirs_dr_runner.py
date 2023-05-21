@@ -1,4 +1,5 @@
-# Copyright (c) 2021 pytroll-cspp-runner developers
+#
+# Copyright (c) 2021 -2023 Pytroll Developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,6 +54,7 @@ def test_get_parser(ap):
 @patch("cspp_runner.viirs_dr_runner.parse_args")
 @patch("cspp_runner.viirs_dr_runner.npp_rolling_runner")
 def test_main(crn, cvp, tmp_path):
+    """Test the VIIRS DR runner main function."""
     import cspp_runner.viirs_dr_runner
 
     # create fake config files
@@ -69,9 +71,9 @@ def test_main(crn, cvp, tmp_path):
     # fake
 
     cvp.return_value = cspp_runner.viirs_dr_runner.get_parser().parse_args(
-            ["-c", os.fspath(conf),
-             "-C", "test",
-             "-l", os.fspath(log),
-             "-p", os.fspath(yaml_conf)])
+        ["-c", os.fspath(conf),
+         "-C", "test",
+         "-l", os.fspath(log),
+         "-p", os.fspath(yaml_conf)])
 
     cspp_runner.viirs_dr_runner.main()

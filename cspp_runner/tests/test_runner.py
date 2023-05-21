@@ -15,11 +15,10 @@
 
 """Tests for runner module."""
 
-import datetime
 import logging
 import os
 import signal
-import unittest.mock
+from unittest.mock import patch
 import pathlib
 
 import posttroll.message
@@ -104,8 +103,8 @@ def test_run_fullswath(tmp_path, fakefile, fakemessage, caplog):
 
     fake_publisher = FakePublisher()
 
-    with unittest.mock.patch("cspp_runner.runner.ThreadPool") as crT, \
-            unittest.mock.patch("cspp_runner.runner.fix_rdrfile") as csr:
+    with patch("cspp_runner.runner.ThreadPool") as crT, \
+            patch("cspp_runner.runner.fix_rdrfile") as csr:
         csr.return_value = (os.fspath(fakefile), 42)
         vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
 
@@ -121,8 +120,8 @@ def test_publish(tmp_path, fake_results, fakemessage, fake_empty_viirs_sdr_files
 
     fake_publisher = FakePublisher()
 
-    with unittest.mock.patch("cspp_runner.runner.ThreadPool"), \
-            unittest.mock.patch("cspp_runner.post_cspp.get_sdr_files") as get_sdr_files:
+    with patch("cspp_runner.runner.ThreadPool"), \
+            patch("cspp_runner.post_cspp.get_sdr_files") as get_sdr_files:
         vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
         get_sdr_files.return_value = fake_empty_viirs_sdr_files
         vsp.orbit_number = 42
@@ -138,120 +137,6 @@ def test_publish(tmp_path, fake_results, fakemessage, fake_empty_viirs_sdr_files
     assert '"start_time": "2021-12-29T13:42:52.700000"' in msg
 
 
-@pytest.mark.parametrize(
-    "funcname", ["update_lut_files", "update_ancillary_files"])
-def test_update_missing_env(monkeypatch, tmp_path, funcname):
-    """Test updating fails when env missing."""
-    monkeypatch.delenv("CSPP_WORKDIR", raising=False)
-    import cspp_runner.runner
-    updater = getattr(cspp_runner.runner, funcname)
-    # should raise exception when no workdir set
-    with pytest.raises(EnvironmentError):
-        updater(
-            "gopher://dummy/location",
-            os.fspath(tmp_path / "stampfile"),
-            "true")
-
-
-@pytest.mark.parametrize(
-    "funcname,label", [("update_lut_files", "LUT"),
-                       ("update_ancillary_files", "ANC")])
-def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
-    """Test update nominal case."""
-    import cspp_runner.runner
-    updater = getattr(cspp_runner.runner, funcname)
-    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
-    with caplog.at_level(logging.INFO):
-        updater("gopher://dummy/location",
-                os.fspath(tmp_path / "stampfile"),
-                "echo")
-    assert f"Download command for {label:s}" in caplog.text
-    assert caplog.text.split("\n")[2].endswith(
-        f"-W {tmp_path / 'env'!s}")
-    assert "downloaded" in caplog.text
-    # I tried to use the technique at
-    # https://stackoverflow.com/a/20503374/974555 to patch datetime.now, but
-    # importing pandas fails if I do so, as pandas apparently also does some
-    # trickery.  Therefore instead hope that `now` was recent enough to fit in the
-    # previous minute at worst.
-    now = datetime.datetime.utcnow()
-    justnow = now - datetime.timedelta(seconds=5)
-    exp1 = tmp_path / f"stampfile.{now:%Y%m%d%H%M}"
-    exp2 = tmp_path / f"stampfile.{justnow:%Y%m%d%H%M}"
-    assert exp1.exists() or exp2.exists()
-
-
-@pytest.mark.parametrize(
-    "funcname", ["update_lut_files", "update_ancillary_files"])
-def test_update_error(monkeypatch, tmp_path, caplog, funcname):
-    """Check that a failed LUT update is logged to stderr.
-
-    And that the stampfile is NOT updated in this case.
-    """
-    import cspp_runner.runner
-    updater = getattr(cspp_runner.runner, funcname)
-    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
-    with caplog.at_level(logging.ERROR):
-        updater(
-            "gother://dummy/location",
-            os.fspath(tmp_path / "stampfile"),
-            "false")
-    assert "exit code 1" in caplog.text
-    now = datetime.datetime.utcnow()
-    justnow = now - datetime.timedelta(seconds=5)
-    exp1 = tmp_path / f"stampfile.{now:%Y%m%d%H%M}"
-    exp2 = tmp_path / f"stampfile.{justnow:%Y%m%d%H%M}"
-    assert not exp1.exists()
-    assert not exp2.exists()
-
-
-def test_check_lut_files_virgin(tmp_path):
-    """Test check LUT files, virgin case."""
-    import cspp_runner.runner
-    empty_dir = tmp_path / "empty"
-    empty_dir.mkdir()
-    res = cspp_runner.runner.check_lut_files(
-        5, 1, "prefix", os.fspath(empty_dir))
-    assert not res
-
-
-def test_check_lut_files_uptodate(tmp_path):
-    """Test check LUT files, everything up to date."""
-    import cspp_runner.runner
-    # create fake stamp files
-    now = datetime.datetime.now()
-    yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-    yesteryear = datetime.datetime.now() - datetime.timedelta(days=400)
-    stamp = tmp_path / "stamp"
-    for dt in (yesteryear, yesterday, now):
-        fn = stamp.with_suffix(f".{dt:%Y%m%d%H%M}")
-        fn.touch()
-    res = cspp_runner.runner.check_lut_files(
-        5, 1, os.fspath(stamp), "irrelevant")
-    assert res
-
-
-def test_check_lut_files_outofdate(tmp_path, caplog):
-    """Test check LUT files, out of date case."""
-    import cspp_runner.runner
-    # create fake stamp file
-    yesteryear = datetime.datetime.now() - datetime.timedelta(days=400)
-    stamp = tmp_path / "stamp"
-    fn = stamp.with_suffix(f".{yesteryear:%Y%m%d%H%M}")
-    fn.touch()
-    # create fake LUT from yesteryear
-    lut_dir = tmp_path / "lut"
-    lut_dir.mkdir()
-    lutfile = lut_dir / "dummy"
-    lutfile.touch()
-    os.utime(lutfile, (yesteryear.timestamp(),)*2)
-    res = cspp_runner.runner.check_lut_files(
-        5, 1,
-        os.fspath(stamp),
-        os.fspath(lut_dir))
-    assert not res
-
-
 def test_run_cspp(monkeypatch, tmp_path):
     """Test running CSPP."""
     import cspp_runner.runner
@@ -265,7 +150,7 @@ def test_run_cspp(monkeypatch, tmp_path):
     cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_file)
 
 
-@unittest.mock.patch('posttroll.message.Message')
+@patch('posttroll.message.Message')
 def test_spawn_cspp_nominal(message, tmp_path, caplog,
                             fake_result_names, fakemessage, fake_empty_viirs_sdr_files,
                             monkeypatch):
@@ -285,24 +170,25 @@ def test_spawn_cspp_nominal(message, tmp_path, caplog,
             (p / f.name).touch()
         return os.fspath(p)
 
-    with unittest.mock.patch("cspp_runner.runner.ThreadPool"), \
-            unittest.mock.patch("cspp_runner.post_cspp.get_sdr_files") as get_sdr_files:
+    with patch("cspp_runner.runner.ThreadPool"), \
+            patch("cspp_runner.post_cspp.get_sdr_files") as get_sdr_files:
         vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
         vsp.message_data = fakemessage.data
 
         get_sdr_files.return_value = fake_empty_viirs_sdr_files
 
-        with unittest.mock.patch("cspp_runner.runner.run_cspp") as crr:
+        with patch("cspp_runner.runner.run_cspp") as crr:
             crr.side_effect = fake_run_cspp
-            fake_workingdir = fake_empty_viirs_sdr_files[0].parent
+            # fake_workingdir = fake_empty_viirs_sdr_files[0].parent
+            vsp.working_dir = fake_empty_viirs_sdr_files[0].parent
             with caplog.at_level(logging.DEBUG):
                 res_files = vsp.spawn_cspp(
                     pathlib.Path(os.fspath(
                         tmp_path /
                         "RNSCA-RVIRS_npp_d20230510_t1430538_e1432180_b59761_c20230512143418235765_drlu_ops.h5")),
                     # "RNSCA-RVIRS_j01_d20211229_t1342527_e1355397_b21199_c20211229144433345000_all-_dev.h5"),
-                    fake_workingdir,
-                    fake_publisher,
+                    # fake_workingdir,
+                    publisher=fake_publisher,
                     viirs_sdr_call="touch",
                     viirs_sdr_options=[],
                     granule_time_tolerance=10)
@@ -322,7 +208,7 @@ def test_spawn_cspp_failure(monkeypatch, fakemessage, tmp_path, caplog):
 
     fake_publisher = FakePublisher()
 
-    with unittest.mock.patch("cspp_runner.runner.ThreadPool"):
+    with patch("cspp_runner.runner.ThreadPool"):
         vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
         vsp.message_data = fakemessage.data
 
@@ -330,11 +216,12 @@ def test_spawn_cspp_failure(monkeypatch, fakemessage, tmp_path, caplog):
         fake_rdr_file.touch()
         fake_working_dir = tmp_path / 'work_dir'
         fake_working_dir.mkdir()
+        vsp.working_dir = fake_working_dir
 
         with caplog.at_level(logging.WARNING):
             rf = vsp.spawn_cspp(fake_rdr_file,
-                                fake_working_dir,
-                                fake_publisher,
+                                # fake_working_dir,
+                                publisher=fake_publisher,
                                 viirs_sdr_call="false",
                                 viirs_sdr_options=[])
 
@@ -349,10 +236,25 @@ nameservers:
 """
 
 
-def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
+class FakeCSPPAncillaryDataUpdater():
+    """Fake CSPPAncillaryDataUpdater class."""
+
+    def update_luts(self):
+        """Fake update LUTs."""
+        return
+
+    def update_ancillary_data(self):
+        """Fake update the ancillary data."""
+        return
+
+
+@patch('cspp_runner.cspp_utils.CSPPAncillaryDataUpdater')
+def test_rolling_runner(fake_updater, tmp_path, caplog, monkeypatch, fakemessage,
                         fake_results):
     """Test NPP rolling runner."""
     from cspp_runner.runner import npp_rolling_runner
+
+    fake_updater.return_value = FakeCSPPAncillaryDataUpdater()
 
     class TimeOut(Exception):
         pass
@@ -361,24 +263,22 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
         raise TimeOut()
 
     fake_workdir = tmp_path / "workdir"
-
-    def fake_spawn_cspp(current_granule, fake_workdir, fake_publisher,
-                        viirs_sdr_call, viirs_sdr_options):
-        fake_workdir.mkdir(exist_ok=True, parents=True)
-
-        return fake_results
+    fake_workdir.mkdir(exist_ok=True, parents=True)
+    fake_updater.cspp_workdir = fake_workdir
 
     yaml_conf = tmp_path / "publisher.yaml"
     with yaml_conf.open(mode="wt", encoding="ascii") as fp:
         fp.write(fake_publisher_config_contents)
 
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(fake_workdir))
-    with unittest.mock.patch("posttroll.subscriber.Subscribe") as psS, \
-            unittest.mock.patch("cspp_runner.runner.Publish"), \
-            unittest.mock.patch("cspp_runner.runner.ViirsSdrProcessor.spawn_cspp", new=fake_spawn_cspp) as crs, \
+    with patch("posttroll.subscriber.Subscribe") as psS, \
+            patch("cspp_runner.runner.Publish"), \
+            patch("cspp_runner.runner.ViirsSdrProcessor.spawn_cspp") as spawn_cspp, \
             caplog.at_level(logging.DEBUG):
+
         psS.return_value.__enter__.return_value.recv.return_value = [fakemessage]
-        crs.return_value = (os.fspath(fake_workdir), fake_results)
+        spawn_cspp.return_value = fake_results
+
         try:
             signal.signal(signal.SIGALRM, handler)
             signal.alarm(2)
@@ -389,7 +289,8 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                                "gopher://example.org/ancs",
                                os.fspath(tmp_path / "stamp_anc"),
                                "true", "/subscribe/file/available/rdr",
-                               "/product/available/sdr", tmp_path / "sdr/results",
+                               "/product/available/sdr",
+                               tmp_path / "sdr_results",
                                "true", [],
                                granule_time_tolerance=10,
                                ncpus=2,
@@ -398,37 +299,7 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
             pass  # probably all is fine
         else:
             raise AssertionError()  # should never get here
-            # ensure that out of date LUT updated
-        with unittest.mock.patch("cspp_runner.runner.check_lut_files",
-                                 autospec=True) as crc, \
-            unittest.mock.patch("cspp_runner.runner.update_lut_files",
-                                autospec=True) as cru:
-            crc.return_value = False
-            try:
-                signal.signal(signal.SIGALRM, handler)
-                signal.alarm(2)
-                npp_rolling_runner(7, 24,
-                                   os.fspath(tmp_path / "stamp_lut"),
-                                   os.fspath(tmp_path / "lut"),
-                                   "gopher://example.org/luts", "true",
-                                   "gopher://example.org/ancs",
-                                   os.fspath(tmp_path / "stamp_anc"),
-                                   "true", "/file/available/rdr",
-                                   "/product/available/sdr", tmp_path / "sdr/results",
-                                   "true", [],
-                                   granule_time_tolerance=10,
-                                   ncpus=2)
-            except TimeOut:
-                pass
-            else:
-                raise AssertionError()
-            cru.assert_called_with(
-                "gopher://example.org/luts",
-                os.fspath(tmp_path / "stamp_lut"),
-                "true")
 
-    assert "Dynamic ancillary data will be updated" in caplog.text
-    assert "Received message" in caplog.text
-    assert "Now that SDR processing has completed" in caplog.text
-    # assert "Seconds to process SDR: " in caplog.text
-    assert "Seconds since granule start: " in caplog.text
+    assert "Seconds since granule start:" in caplog.text
+    assert "Get the results from the multiprocessing pool-run" in caplog.text
+    assert "Now that SDR processing has completed, check for new LUT files..." in caplog.text
