@@ -387,6 +387,7 @@ def npp_rolling_runner(
     luts_acillary_kwargs['lut_update_stampfile_prefix'] = lut_update_stampfile_prefix
     luts_acillary_kwargs['lut_dir'] = lut_dir
     luts_acillary_kwargs['mirror_jpss_luts'] = mirror_jpss_luts
+    luts_acillary_kwargs['url_jpss_remote_lut_dir'] = url_jpss_remote_lut_dir
     luts_acillary_kwargs['url_jpss_remote_anc_dir'] = url_jpss_remote_anc_dir
     luts_acillary_kwargs['anc_update_stampfile_prefix'] = anc_update_stampfile_prefix
     luts_acillary_kwargs['mirror_jpss_ancillary'] = mirror_jpss_ancillary
