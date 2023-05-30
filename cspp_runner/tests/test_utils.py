@@ -88,6 +88,23 @@ def test_update_lut_files4cspp_no_script_provided(monkeypatch, tmp_path, caplog)
 #     assert log_output in caplog.text
 
 
+def test_initialize_environment_variable_is_none(monkeypatch, tmp_path, caplog):
+    """Test update luts/anc data fails when some env variable is set to None."""
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+    lutdir = tmp_path / 'my_lut_dir'
+    lutdir.mkdir()
+    kwargs = {'lut_update_stampfile_prefix': os.fspath(lutdir / "stampfile"),
+              'lut_dir': lutdir,
+              'mirror_jpss_luts': "true",
+              'url_jpss_remote_lut_dir': None,
+              }
+
+    with caplog.at_level(logging.DEBUG), pytest.raises(EnvironmentError):
+        _ = CSPPAncillaryDataUpdater(**kwargs)
+
+    assert "Environments set:" in caplog.text
+
+
 def test_initialize_missing_env(monkeypatch, tmp_path):
     """Test initialize object fails when env missing."""
     monkeypatch.delenv("CSPP_WORKDIR", raising=False)
@@ -115,6 +132,7 @@ def test_update_luts_nominal(monkeypatch, tmp_path, caplog):
               'lut_dir': lutdir,
               'mirror_jpss_luts': lut_script,
               'url_jpss_remote_lut_dir': "gopher://dummy/location",
+              'url_jpss_remote_anc_dir': "gopher://dummy/other_location",
               }
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
 
@@ -147,6 +165,7 @@ def test_update_luts_error(monkeypatch, tmp_path, caplog):
               'lut_dir': lutdir,
               'mirror_jpss_luts': lut_script,
               'url_jpss_remote_lut_dir': "gopher://dummy/location",
+              'url_jpss_remote_anc_dir': "gopher://dummy/other_location",
               }
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
 
@@ -201,6 +220,7 @@ def test_update_ancillary_data_error(monkeypatch, tmp_path, caplog):
               'anc_dir': ancdir,
               'mirror_jpss_ancillary': anc_script,
               'url_jpss_remote_anc_dir': "gopher://dummy/location",
+              'url_jpss_remote_lut_dir': "gopher://dummy/other_location",
               }
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
 

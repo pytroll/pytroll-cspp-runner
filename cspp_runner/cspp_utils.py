@@ -44,24 +44,36 @@ class CSPPAncillaryDataUpdater():
 
     def __init__(self, **kwargs):
         """Initialize the CSPP ancillary and LUTs data updater."""
-        self.url_download_trial_frequency_hours = kwargs.get('url_download_trial_frequency_hours')
+        self.url_download_trial_frequency_hours = kwargs.get('url_download_trial_frequency_hours', 24)
 
-        self.thr_lut_files_age_days = kwargs.get('thr_lut_files_age_days')
+        self.thr_lut_files_age_days = kwargs.get('thr_lut_files_age_days', 7)
         self.lut_update_stampfile_prefix = kwargs.get('lut_update_stampfile_prefix')
         self.lut_dir = kwargs.get('lut_dir')
         self.mirror_jpss_luts = kwargs.get('mirror_jpss_luts')
-        self.url_jpss_remote_lut_dir = kwargs.get('url_jpss_remote_lut_dir')
-
-        self.url_jpss_remote_anc_dir = kwargs.get('url_jpss_remote_anc_dir')
         self.anc_update_stampfile_prefix = kwargs.get('anc_update_stampfile_prefix')
         self.mirror_jpss_ancillary = kwargs.get('mirror_jpss_ancillary')
+        self.url_jpss_remote_lut_dir = kwargs.get('url_jpss_remote_lut_dir', '')
+        self.url_jpss_remote_anc_dir = kwargs.get('url_jpss_remote_anc_dir', '')
 
+        self.env = None
+        self._set_environment()
         self.initalize_working_dir()
+
+        if None in self.env.values():
+            raise EnvironmentError("Some environment variables are set to None!")
+
+    def _set_environment(self):
+        """Set the environment variables needed for CSPP."""
+        self.env = os.environ.copy()
+        _check_environment("CSPP_WORKDIR")
+        self.env['CSPP_WORKDIR'] = os.environ.get("CSPP_WORKDIR", '')
+        self.env['JPSS_REMOTE_LUT_DIR'] = self.url_jpss_remote_lut_dir
+        self.env['JPSS_REMOTE_ANC_DIR'] = self.url_jpss_remote_anc_dir
+        LOG.debug("Environments set: %s" % str(self.env))
 
     def initalize_working_dir(self):
         """Check and set the CSPP working directory."""
-        _check_environment("CSPP_WORKDIR")
-        self.cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
+        self.cspp_workdir = self.env.get('CSPP_WORKDIR')
         pathlib.Path(self.cspp_workdir).mkdir(parents=True, exist_ok=True)
 
     def update_luts(self):
@@ -156,7 +168,7 @@ class CSPPAncillaryDataUpdater():
 
         """
         update_files(
-            self.url_jpss_remote_lut_dir,
+            self.env,
             self.lut_update_stampfile_prefix,
             self.mirror_jpss_luts,
             "LUT",
@@ -175,14 +187,14 @@ class CSPPAncillaryDataUpdater():
 
         """
         update_files(
-            self.url_jpss_remote_anc_dir,
+            self.env,
             self.anc_update_stampfile_prefix,
             self.mirror_jpss_ancillary,
             "ANC",
             timeout=timeout)
 
 
-def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
+def update_files(environ, update_stampfile_prefix, mirror_jpss,
                  what, timeout=600):
     """Do the update of the LUT files on disk.
 
@@ -190,18 +202,15 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
     the JPSS script in a separat shell.
 
     """
-    _check_environment("CSPP_WORKDIR")
-    cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
+    cspp_workdir = environ["CSPP_WORKDIR"]
     pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
-    my_env = os.environ.copy()
-    my_env['JPSS_REMOTE_ANC_DIR'] = url_jpss_remote_dir
 
     LOG.info(f"Start downloading {what:s}....")
     cmd = [shutil.which(mirror_jpss), "-W", cspp_workdir]
     LOG.info(f"Download command for {what:s}: {cmd!s}")
 
     proc = subprocess.Popen(
-        cmd, shell=False, env=my_env,
+        cmd, shell=False, env=environ,
         cwd=cspp_workdir,
         stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
