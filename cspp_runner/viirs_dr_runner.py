@@ -105,6 +105,7 @@ def main():
     viirs_sdr_call = OPTIONS["viirs_sdr_call"]
     viirs_sdr_options = ast.literal_eval(OPTIONS["viirs_sdr_options"])
     granule_specific_working_dir = OPTIONS.get("granule_specific_working_dir")
+
     if granule_specific_working_dir == 'true':
         granule_specific_working_dir = True
     else:

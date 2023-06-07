@@ -248,7 +248,7 @@ class ViirsSdrProcessor:
             try:
                 self.working_dir.mkdir(parents=True, exist_ok=True)
             except OSError:
-                self.working_dir = tempfile.mkdtemp(dir=cspp_workdir)
+                self.working_dir = pathlib.Path(tempfile.mkdtemp(dir=cspp_workdir))
                 LOG.warning("Failed creating the requested working directory path. created this instead: %s",
                             self.working_dir)
 
@@ -279,7 +279,7 @@ class ViirsSdrProcessor:
 
         granule_specific_working_dir = kwargs.get('granule_specific_working_dir')
         if granule_specific_working_dir:
-            working_dir = tempfile.mkdtemp(dir=self.working_dir)
+            working_dir = pathlib.Path(tempfile.mkdtemp(dir=self.working_dir))
         else:
             working_dir = self.working_dir
 
