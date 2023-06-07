@@ -5,7 +5,6 @@ and move the SDR granules to a destination directory.
 """
 
 import os
-import pathlib
 import stat
 from datetime import datetime, timedelta
 import shutil
@@ -170,15 +169,16 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
         return platform_name + obstime.strftime('_%Y%m%d_%H%M_') + '%.5d' % orbnum
 
 
-def pack_sdr_files(sdrfiles, base_dir, subdir):
+# def pack_sdr_files(sdrfiles, base_dir, subdir):
+def pack_sdr_files(sdrfiles, dest_path):
     """Copy the SDR files to the destination under the *subdir* directory structure."""
-    path = pathlib.Path(base_dir) / subdir
-    path.mkdir(exist_ok=True, parents=True)
+    # path = pathlib.Path(base_dir) / subdir
+    dest_path.mkdir(exist_ok=True, parents=True)
 
     LOG.info("Number of SDR files: " + str(len(sdrfiles)))
     retvl = []
     for sdrfile in sdrfiles:
-        newfilename = path / os.path.basename(sdrfile)
+        newfilename = dest_path / os.path.basename(sdrfile)
         LOG.info(f"Copy sdrfile to destination: {newfilename!s}")
         if os.path.exists(sdrfile):
             LOG.info("File to copy: {file} <> ST_MTIME={time}".format(

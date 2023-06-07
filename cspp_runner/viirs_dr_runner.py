@@ -104,6 +104,11 @@ def main():
         'url_download_trial_frequency_hours']
     viirs_sdr_call = OPTIONS["viirs_sdr_call"]
     viirs_sdr_options = ast.literal_eval(OPTIONS["viirs_sdr_options"])
+    granule_specific_working_dir = OPTIONS.get("granule_specific_working_dir")
+    if granule_specific_working_dir == 'true':
+        granule_specific_working_dir = True
+    else:
+        granule_specific_working_dir = False
 
     if args.log is not None:
         ndays = int(OPTIONS.get("log_rotation_days", 1))
@@ -145,6 +150,7 @@ def main():
         int(OPTIONS.get("granule_time_tolerance", 10)),
         int(OPTIONS.get("ncpus", 1)),
         publisher_config=args.publisher,
+        granule_specific_working_dir=granule_specific_working_dir
     )
 
 

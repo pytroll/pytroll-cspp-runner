@@ -81,6 +81,8 @@ def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_file):
         LOG.warning("No options will be passed to CSPP")
         viirs_sdr_options = []
 
+    os.environ.update({"CSPP_WORKDIR": work_dir})
+
     # Run the command:
     cmdlist = [viirs_sdr_call]
     cmdlist.extend(viirs_sdr_options)
@@ -142,11 +144,8 @@ class ViirsSdrProcessor:
         self.orbit_number = 0  # Initialised orbit number
         # self.result_files = []
 
-    def pack_sdr_files(self, result_files, subd):
-        """Pack the SDR files together in one directory per pass."""
-        return pack_sdr_files(result_files, self.sdr_home, subd)
-
-    def run(self, msg, publisher, viirs_sdr_call, viirs_sdr_options, granule_time_tolerance=10):
+    def run(self, msg, publisher, viirs_sdr_call, viirs_sdr_options,
+            granule_time_tolerance=10, granule_specific_working_dir=False):
         """Start the VIIRS SDR processing using CSPP on one rdr granule."""
         if msg:
             LOG.debug("Received message: " + str(msg))
@@ -240,13 +239,15 @@ class ViirsSdrProcessor:
         else:
             LOG.debug("Start time of the entire swath is not changed")
 
+        # Get the default CSPP Working dir:
+        cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
+
         # Create the working directory if it doesn't exist already:
         if not self.working_dir:
             self.working_dir = pathlib.Path(self.sdr_home) / working_subdir_name
             try:
                 self.working_dir.mkdir(parents=True, exist_ok=True)
             except OSError:
-                cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
                 self.working_dir = tempfile.mkdtemp(dir=cspp_workdir)
                 LOG.warning("Failed creating the requested working directory path. created this instead: %s",
                             self.working_dir)
@@ -254,17 +255,12 @@ class ViirsSdrProcessor:
         LOG.info("Before call to spawn_cspp. Argument list = %s", str(keeper))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(
-            # self.pool.apply_async(self.spawn_cspp, [keeper],
-            #                       {"publisher": publisher,
-            #                        "viirs_sdr_call": viirs_sdr_call,
-            #                        "viirs_sdr_options": viirs_sdr_options,
-            #                        "granule_time_tolerance": granule_time_tolerance
-            #                        }))
             self.pool.apply_async(self.spawn_cspp,
                                   args=(keeper, publisher,
                                         viirs_sdr_call,
                                         viirs_sdr_options),
-                                  kwds={"granule_time_tolerance": granule_time_tolerance}))
+                                  kwds={"granule_time_tolerance": granule_time_tolerance,
+                                        "granule_specific_working_dir": granule_specific_working_dir}))
 
         LOG.debug("Return from run call...")
         return True
@@ -281,19 +277,30 @@ class ViirsSdrProcessor:
         LOG.info("Time tolerance to identify which SDR granule belong " +
                  "to the RDR granule being processed: " + str(sec_tolerance))
 
+        granule_specific_working_dir = kwargs.get('granule_specific_working_dir')
+        if granule_specific_working_dir:
+            working_dir = tempfile.mkdtemp(dir=self.working_dir)
+        else:
+            working_dir = self.working_dir
+
         LOG.info("Start CSPP: RDR files = %s", str(current_granule))
-        run_cspp(self.working_dir, viirs_sdr_call, viirs_sdr_options, current_granule)
+        LOG.info("Run from working dir = %s", working_dir)
+        run_cspp(working_dir, viirs_sdr_call, viirs_sdr_options, current_granule)
         LOG.info("CSPP SDR processing finished...")
         # Assume everything has gone well!
-        new_result_files = get_sdr_files(self.working_dir,
+        new_result_files = get_sdr_files(working_dir,
                                          platform_name=self.platform_name,
                                          start_time=start_time,
                                          time_tolerance=timedelta(seconds=sec_tolerance))
-        LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
         if len(new_result_files) == 0:
             LOG.warning("No SDR files available. CSPP probably failed!")
             return []
 
+        if working_dir != self.working_dir:
+            LOG.info("Move the sdr files to the final destination: %s", self.working_dir)
+            new_result_files = pack_sdr_files(new_result_files, self.working_dir)
+
+        LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
         LOG.info("Number of SDR results files = " + str(len(new_result_files)))
         # Now start publish the files:
         self.publish_sdr(publisher, new_result_files)
@@ -372,7 +379,8 @@ def npp_rolling_runner(
         viirs_sdr_options,
         granule_time_tolerance=10,
         ncpus=1,
-        publisher_config=None
+        publisher_config=None,
+        granule_specific_working_dir=False
 ):
     """Live runner to process the VIIRS SDR data calling the necessary CSPP script.
 
@@ -418,7 +426,8 @@ def npp_rolling_runner(
                     status = viirs_proc.run(
                         msg, publisher,
                         viirs_sdr_call, viirs_sdr_options,
-                        granule_time_tolerance
+                        granule_time_tolerance,
+                        granule_specific_working_dir
                     )
                     LOG.debug("Sent message to run: %s", str(msg))
                     LOG.debug("Running: %s", str(status))
