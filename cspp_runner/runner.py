@@ -34,7 +34,7 @@ import time
 import yaml
 from datetime import datetime, timedelta
 from multiprocessing.pool import ThreadPool
-from urllib.parse import urlunsplit, urlparse
+from urllib.parse import urlparse
 
 import posttroll.subscriber
 from posttroll.publisher import Publish
@@ -308,7 +308,7 @@ class ViirsSdrProcessor:
 
         # Cleanup the working dir:
         if working_dir != self.working_dir:
-            LOG.info("Clean the working directory: %s", working_dir)
+            LOG.info("Clean the working directory: %s", str(working_dir))
             cleanup_cspp_workdir(working_dir)
 
         LOG.debug("Return all SDR result files.")
@@ -341,10 +341,7 @@ class ViirsSdrProcessor:
 
         for result_file in result_files:
             filename = os.path.basename(result_file)
-            to_send[
-                'dataset'].append({'uri': urlunsplit(('ssh', socket.gethostname(),
-                                                      str(result_file), '', '')),
-                                   'uid': filename})
+            to_send['dataset'].append({'uri': str(result_file), 'uid': filename})
             (start_time, end_time) = get_sdr_times(filename)
             start_times.add(start_time)
             end_times.add(end_time)
