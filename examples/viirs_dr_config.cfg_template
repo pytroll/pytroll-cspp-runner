@@ -67,6 +67,9 @@ mirror_jpss_ancillary = sdr_ancillary.sh
 # for a whole overpass.
 granule_time_tolerance = 10
 
+# For Granule processing: Run CSPP for each granule from granule-specific unique temporary directory paths
+granule_specific_working_dir = 'true'
+
 [utv]
 
 site = 'nrk'

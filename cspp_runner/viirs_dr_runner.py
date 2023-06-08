@@ -94,8 +94,6 @@ def main():
     subscribe_topics = OPTIONS.get('subscribe_topics').split(',')
     subscribe_topics = [topic for topic in subscribe_topics if topic]
 
-    site = OPTIONS.get('site')
-
     thr_lut_files_age_days = OPTIONS.get('threshold_lut_files_age_days', 14)
     url_jpss_remote_lut_dir = OPTIONS['url_jpss_remote_lut_dir']
     url_jpss_remote_anc_dir = OPTIONS['url_jpss_remote_anc_dir']
@@ -106,6 +104,12 @@ def main():
         'url_download_trial_frequency_hours']
     viirs_sdr_call = OPTIONS["viirs_sdr_call"]
     viirs_sdr_options = ast.literal_eval(OPTIONS["viirs_sdr_options"])
+    granule_specific_working_dir = OPTIONS.get("granule_specific_working_dir")
+
+    if granule_specific_working_dir == 'true':
+        granule_specific_working_dir = True
+    else:
+        granule_specific_working_dir = False
 
     if args.log is not None:
         ndays = int(OPTIONS.get("log_rotation_days", 1))
@@ -127,6 +131,8 @@ def main():
     logging.getLogger('').setLevel(logging.DEBUG)
     logging.getLogger('posttroll').setLevel(logging.INFO)
 
+    # Update ancillary data and LUTs here first!
+
     npp_rolling_runner(
         thr_lut_files_age_days,
         url_download_trial_frequency_hours,
@@ -138,8 +144,6 @@ def main():
         anc_update_stampfile_prefix,
         OPTIONS.get("mirror_jpss_ancillary"),
         subscribe_topics,
-        site,
-        OPTIONS["mode"],
         publish_topic,
         OPTIONS["level1_home"],
         viirs_sdr_call,
@@ -147,6 +151,7 @@ def main():
         int(OPTIONS.get("granule_time_tolerance", 10)),
         int(OPTIONS.get("ncpus", 1)),
         publisher_config=args.publisher,
+        granule_specific_working_dir=granule_specific_working_dir
     )
 
 
