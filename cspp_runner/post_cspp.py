@@ -33,15 +33,22 @@ EXPECTED_NUMBER_OF_SDR_FILES = 28
 
 def cleanup_cspp_workdir(workdir):
     """Clean up the CSPP working dir after processing."""
-    filelist = glob('%s/*' % workdir)
+    try:
+        filelist = workdir.glob('*')
+    except AttributeError:
+        filelist = glob('%s/*' % workdir)
+
     for s in filelist:
         if os.path.isfile(s):
             os.remove(s)
-    filelist = glob('%s/*' % workdir)
-    LOG.info(
-        "Number of items left after cleaning working dir = " + str(len(filelist)))
-    shutil.rmtree(workdir)
-    # os.mkdir(workdir)
+
+    try:
+        filelist = workdir.glob('*')
+    except AttributeError:
+        filelist = glob('%s/*' % workdir)
+
+    nfiles = len([f for f in filelist])
+    LOG.info("Number of items left after cleaning working dir = %d", nfiles)
     return
 
 

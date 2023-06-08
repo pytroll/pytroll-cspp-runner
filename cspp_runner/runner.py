@@ -47,7 +47,8 @@ from cspp_runner import (get_datetime_from_filename,
                          get_sdr_times)
 from cspp_runner.post_cspp import (get_sdr_files,
                                    create_subdirname,
-                                   pack_sdr_files)
+                                   pack_sdr_files,
+                                   cleanup_cspp_workdir)
 from cspp_runner.pre_cspp import fix_rdrfile
 
 from cspp_runner.cspp_utils import get_local_ips
@@ -81,7 +82,7 @@ def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_file):
         LOG.warning("No options will be passed to CSPP")
         viirs_sdr_options = []
 
-    os.environ.update({"CSPP_WORKDIR": work_dir})
+    os.environ.update({"CSPP_WORKDIR": str(work_dir)})
 
     # Run the command:
     cmdlist = [viirs_sdr_call]
@@ -91,7 +92,7 @@ def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_file):
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))
     viirs_sdr_proc = subprocess.Popen(
-        cmdlist, cwd=work_dir,
+        cmdlist, cwd=str(work_dir),
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE)
     while True:
@@ -304,6 +305,11 @@ class ViirsSdrProcessor:
         LOG.info("Number of SDR results files = " + str(len(new_result_files)))
         # Now start publish the files:
         self.publish_sdr(publisher, new_result_files)
+
+        # Cleanup the working dir:
+        if working_dir != self.working_dir:
+            LOG.info("Clean the working directory: %s", working_dir)
+            cleanup_cspp_workdir(working_dir)
 
         LOG.debug("Return all SDR result files.")
         return new_result_files
