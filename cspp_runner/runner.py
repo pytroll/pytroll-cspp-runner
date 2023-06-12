@@ -482,13 +482,14 @@ class ViirsSdrProcessor:
         LOG.info("Time tolerance to identify which SDR granule belong " +
                  "to the RDR granule being processed: " + str(sec_tolerance))
 
-        working_dir = pathlib.Path(tempfile.mkdtemp(dir=self.working_dir))
+        working_dir = create_tmp_workdir(self.working_dir)
 
         LOG.info("Start CSPP: RDR files = " + str(glist))
         LOG.info("Run from working dir = %s", working_dir)
-        run_cspp(working_dir, viirs_sdr_call, viirs_sdr_options, *glist)
+        run_cspp(working_dir, viirs_sdr_call, viirs_sdr_options, glist)
         LOG.info("CSPP SDR processing finished...")
         # Assume everything has gone well!
+
         new_result_files = get_sdr_files(working_dir,
                                          platform_name=self.platform_name,
                                          start_time=start_time,
@@ -564,6 +565,11 @@ class ViirsSdrProcessor:
         LOG.debug("After having published/sent message.")
 
 
+def create_tmp_workdir(parrent_dir):
+    """Create unique temporary working dir."""
+    return pathlib.Path(tempfile.mkdtemp(dir=parrent_dir))
+
+
 def npp_rolling_runner(
         thr_lut_files_age_days,
         url_download_trial_frequency_hours,
@@ -616,7 +622,7 @@ def npp_rolling_runner(
     ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
     LOG.info("Will use %d CPUs when running CSPP instances" % ncpus)
-    viirs_proc = ViirsSdrProcessor(ncpus, level1_home)
+    viirs_proc = ViirsSdrProcessor(ncpus, level1_home, publish_topic)
 
     if publisher_config is None:
         pubconf = {"name": "viirs_dr_runner", "port": 0}
