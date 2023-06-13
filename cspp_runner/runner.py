@@ -48,7 +48,8 @@ from cspp_runner import (get_datetime_from_filename, get_sdr_times)
 from cspp_runner.post_cspp import (get_sdr_files,
                                    create_subdirname,
                                    pack_sdr_files,
-                                   cleanup_cspp_workdir)
+                                   cleanup_cspp_workdir,
+                                   EXPECTED_NUMBER_OF_SDR_FILES)
 from cspp_runner.pre_cspp import fix_rdrfile
 
 PATH = os.environ.get('PATH', '')
@@ -503,8 +504,11 @@ class ViirsSdrProcessor:
 
         LOG.info("SDR file names: %s", str([os.path.basename(f) for f in new_result_files]))
         LOG.info("Number of SDR results files = " + str(len(new_result_files)))
-        # Now start publish the files:
-        self.publish_sdr(publisher, new_result_files)
+        if len(new_result_files) < EXPECTED_NUMBER_OF_SDR_FILES:
+            LOG.error("Less SDR files for granule than expected. CSPP probably failed, don't publish the result!")
+        else:
+            # Now start publish the files:
+            self.publish_sdr(publisher, new_result_files)
 
         # Cleanup the working dir:
         if working_dir != self.working_dir:
