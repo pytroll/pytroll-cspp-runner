@@ -251,7 +251,7 @@ def test_check_lut_files_outofdate(tmp_path, caplog):
     assert not res
 
 
-def test_run_cspp_one_rdr(monkeypatch, tmp_path):
+def test_run_cspp_one_rdr(monkeypatch, tmp_path, caplog):
     """Test running CSPP on one RDR file."""
     import cspp_runner.runner
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
@@ -261,10 +261,15 @@ def test_run_cspp_one_rdr(monkeypatch, tmp_path):
     fake_rdr_file = tmp_path / "RNSCA-RVIRS_j02_d20230511_t0016580_e0018234_b02578_c20230511001837310000_drlu_ops.h5"
     fake_rdr_file.touch()
 
-    cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_file)
+    with caplog.at_level(logging.DEBUG):
+        cspp_runner.runner.run_cspp(working_dir, "true", [], [fake_rdr_file])
+
+    assert "Run CSPP on 1 RDR file(s):" in caplog.text
+    assert "Popen call arguments: ['true', " in caplog.text
+    assert "RNSCA-RVIRS_j02_d20230511_t0016580_e0018234_b02578_c20230511001837310000_drlu_ops.h5" in caplog.text
 
 
-def test_run_cspp_list_of_rdr_granules(monkeypatch, tmp_path):
+def test_run_cspp_list_of_rdr_granules(monkeypatch, tmp_path, caplog):
     """Test running CSPP on a list of rdr files (granules)."""
     import cspp_runner.runner
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
@@ -277,7 +282,13 @@ def test_run_cspp_list_of_rdr_granules(monkeypatch, tmp_path):
     fake_rdr_granule2.touch()
 
     fake_rdr_files = [fake_rdr_granule1, fake_rdr_granule2]
-    cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_files)
+    with caplog.at_level(logging.DEBUG):
+        cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_files)
+
+    assert "Run CSPP on 2 RDR file(s):" in caplog.text
+    assert "Popen call arguments: ['true', " in caplog.text
+    assert "RNSCA-RVIRS_npp_d20230618_t1217289_e1218543_b00001_c20230618121900480000_drlu_ops.h5" in caplog.text
+    assert "RNSCA-RVIRS_npp_d20230618_t1218543_e1220196_b00001_c20230618122016129000_drlu_ops.h5" in caplog.text
 
 
 @patch('posttroll.message.Message')

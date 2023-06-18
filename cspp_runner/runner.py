@@ -256,11 +256,13 @@ def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_files):
     # Run the command:
     cmdlist = [viirs_sdr_call]
     cmdlist.extend(viirs_sdr_options)
-    list_of_filepaths = [str(rdr) for rdr in [viirs_rdr_files]]
+    list_of_filepaths = [str(rdr) for rdr in viirs_rdr_files]
+    LOG.info("Run CSPP on %d RDR file(s): %s", len(list_of_filepaths), str(list_of_filepaths))
     cmdlist.extend(list_of_filepaths)
+
     t0_clock = time.process_time()
     t0_wall = time.time()
-    LOG.info("Popen call arguments: " + str(cmdlist))
+    LOG.debug("Popen call arguments: " + str(cmdlist))
     viirs_sdr_proc = subprocess.Popen(
         cmdlist, cwd=str(work_dir),
         stderr=subprocess.PIPE,
