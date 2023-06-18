@@ -1,4 +1,4 @@
-# Copyright (c) 2021 pytroll-cspp-runner developers
+# Copyright (c) 2021, 2023 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,10 @@
 """Tests for post-cspp module."""
 
 import logging
-import os
 
 
 def test_pack_sdr_files(tmp_path, caplog):
+    """Test 'packing' (copy the relevant granules to the destination directory) the SDR files."""
     from cspp_runner.post_cspp import pack_sdr_files
 
     # create dummy source file
@@ -29,11 +29,9 @@ def test_pack_sdr_files(tmp_path, caplog):
     dest = tmp_path / "path" / "to" / "sdr_dir"
 
     with caplog.at_level(logging.DEBUG):
-        newnames = pack_sdr_files(
-            [p],
-            os.fspath(dest),
-            "subdir")
+        newnames = pack_sdr_files([p], dest)
+
     assert "Number of SDR files: 1" in caplog.text
-    assert (dest / "subdir" / "sdr.h5").exists()
+    assert (dest / "sdr.h5").exists()
     assert len(newnames) == 1
     assert isinstance(newnames[0], str)

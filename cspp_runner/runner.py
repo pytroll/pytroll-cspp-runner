@@ -256,7 +256,8 @@ def run_cspp(work_dir, viirs_sdr_call, viirs_sdr_options, viirs_rdr_files):
     # Run the command:
     cmdlist = [viirs_sdr_call]
     cmdlist.extend(viirs_sdr_options)
-    cmdlist.extend(viirs_rdr_files)
+    list_of_filepaths = [str(rdr) for rdr in [viirs_rdr_files]]
+    cmdlist.extend(list_of_filepaths)
     t0_clock = time.process_time()
     t0_wall = time.time()
     LOG.info("Popen call arguments: " + str(cmdlist))

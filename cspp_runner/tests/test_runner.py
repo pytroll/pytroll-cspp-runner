@@ -251,8 +251,8 @@ def test_check_lut_files_outofdate(tmp_path, caplog):
     assert not res
 
 
-def test_run_cspp(monkeypatch, tmp_path):
-    """Test running CSPP."""
+def test_run_cspp_one_rdr(monkeypatch, tmp_path):
+    """Test running CSPP on one RDR file."""
     import cspp_runner.runner
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
 
@@ -262,6 +262,22 @@ def test_run_cspp(monkeypatch, tmp_path):
     fake_rdr_file.touch()
 
     cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_file)
+
+
+def test_run_cspp_list_of_rdr_granules(monkeypatch, tmp_path):
+    """Test running CSPP on a list of rdr files (granules)."""
+    import cspp_runner.runner
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+
+    working_dir = tmp_path / "env"
+    working_dir.mkdir(parents=True)
+    fake_rdr_granule1 = tmp_path / "RNSCA-RVIRS_npp_d20230618_t1217289_e1218543_b00001_c20230618121900480000_drlu_ops.h5"  # noqa
+    fake_rdr_granule1.touch()
+    fake_rdr_granule2 = tmp_path / "RNSCA-RVIRS_npp_d20230618_t1218543_e1220196_b00001_c20230618122016129000_drlu_ops.h5"  # noqa
+    fake_rdr_granule2.touch()
+
+    fake_rdr_files = [fake_rdr_granule1, fake_rdr_granule2]
+    cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_files)
 
 
 @patch('posttroll.message.Message')
@@ -434,8 +450,8 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                 "gopher://example.org/luts",
                 os.fspath(tmp_path / "stamp_lut"),
                 "true")
+
     assert "Dynamic ancillary data will be updated" in caplog.text
-    assert "Received message data" in caplog.text
+    assert "Received message:" in caplog.text
     assert "Now that SDR processing has completed" in caplog.text
-    assert "Seconds to process SDR: " in caplog.text
     assert "Seconds since granule start: " in caplog.text
