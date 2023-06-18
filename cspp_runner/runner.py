@@ -322,6 +322,8 @@ class ViirsSdrProcessor:
         """Start the VIIRS SDR processing using CSPP on one rdr granule."""
         if msg:
             LOG.debug("Received message: " + str(msg))
+        else:
+            LOG.debug("Message is None!")
 
         LOG.debug("glist: " + str(self.glist))
         if msg is None and self.glist and len(self.glist) > 2:
@@ -644,7 +646,7 @@ def npp_rolling_runner(
             while True:
                 LOG.debug("Re-initialise the viirs processor instance.")
                 viirs_proc.initialise()
-                for msg in subscr.recv(timeout=300):
+                for msg in subscr.recv(timeout=90):
                     status = viirs_proc.run(
                         msg, publisher,
                         viirs_sdr_call, viirs_sdr_options,
