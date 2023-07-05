@@ -325,7 +325,10 @@ class ViirsSdrProcessor:
         else:
             LOG.debug("Message is None!")
 
-        LOG.debug("granules: " + str(self.granules))
+        LOG.debug("RDR Granules in cache list: ")
+        for granule in self.granules:
+            LOG.debug("\t%s", os.path.basename(granule))
+
         if msg is None and self.granules and len(self.granules) > 2:
             # The swath is assumed to be finished now
             LOG.debug("The swath is assumed to be finished now")
@@ -454,12 +457,13 @@ class ViirsSdrProcessor:
                 LOG.warning("Failed creating the requested working directory path. created this instead: %s",
                             self.working_dir)
 
+        granule_list = self.granules.copy()
         LOG.info("Before call to spawn_cspp. Argument list = " +
-                 str([keeper] + self.granules))
+                 str([keeper] + granule_list))
         LOG.info("Start time: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.cspp_results.append(
             self.pool.apply_async(self.spawn_cspp,
-                                  args=(keeper, self.granules, publisher,
+                                  args=(keeper, granule_list, publisher,
                                         viirs_sdr_call,
                                         viirs_sdr_options),
                                   kwds={"granule_time_tolerance": granule_time_tolerance}))
@@ -473,8 +477,11 @@ class ViirsSdrProcessor:
     def spawn_cspp(self, current_granule, granules, publisher,
                    viirs_sdr_call, viirs_sdr_options, **kwargs):
         """Spawn a CSPP run on the set of RDR files given."""
-        LOG.info("current_granule = " + str(current_granule))
-        LOG.info("granules = " + str(granules))
+        LOG.debug("Inside spawn_cspp - Current granule = %s", os.path.basename(current_granule))
+        LOG.debug("Inside spawn_cspp - Granules = ")
+        for granule in granules:
+            LOG.debug("\t%s", os.path.basename(granule))
+
         if current_granule in granules and len(granules) == 1:
             LOG.info("Current granule is identical to the 'list of granules'" +
                      " No sdr result files will be skipped")
@@ -482,15 +489,16 @@ class ViirsSdrProcessor:
         start_time = get_datetime_from_filename(current_granule)
         LOG.info("Start time of current granule: %s", start_time.strftime('%Y-%m-%d %H:%M:%S'))
         sec_tolerance = int(kwargs.get('granule_time_tolerance', 10))
-        LOG.info("Time tolerance to identify which SDR granule belong " +
+        LOG.info("Time deviation tolerance in seconds to identify which SDR granule belong " +
                  "to the RDR granule being processed: " + str(sec_tolerance))
 
         working_dir = create_tmp_workdir(self.working_dir)
 
         LOG.info("Start CSPP: RDR files = " + str(granules))
-        LOG.info("Run from working dir = %s", working_dir)
+        LOG.debug("Run from working dir = %s", working_dir)
         run_cspp(working_dir, viirs_sdr_call, viirs_sdr_options, granules)
-        LOG.info("CSPP SDR processing finished...")
+        LOG.info("CSPP SDR processing finished on granule with start time = %s", str(start_time))
+        LOG.debug("Working dir = %s", working_dir)
         # Assume everything has gone well!
 
         new_result_files = get_sdr_files(working_dir,

@@ -40,6 +40,8 @@ def cleanup_cspp_workdir(workdir):
 
     for s in filelist:
         if os.path.isfile(s):
+            if s.name.find('SVM16') >= 0:
+                LOG.debug("Granule SDR %s will be cleaned", s.name)
             os.remove(s)
 
     try:
@@ -79,6 +81,7 @@ def get_sdr_files(sdr_dir, **kwargs):
     params.update(kwargs)
     # params.update({'start_time': kwargs.get('start_time')})
     if 'start_time' in params and not params.get('start_time'):
+        LOG.debug("params['start_time'] = %s", str(params['start_time']))
         params.pop('start_time')
     params.update({'platform_short_name': PLATFORM_NAME.get(kwargs.get('platform_name'))})
     try:
@@ -101,7 +104,8 @@ def get_sdr_files(sdr_dir, **kwargs):
 
     start_time = params['start_time']
     LOG.warning("No or not enough SDR files found matching the RDR granule: Files found = %d", nfiles_found)
-    LOG.info("Will look for SDR files with a start time close in time to the start time of the RDR granule.")
+    LOG.info("Will look for SDR files with a start time close in time to the start time of the RDR granule: %s",
+             str(start_time))
     expected_start_time = start_time - time_tolerance
     sdr_files = []
     while nfiles_found < EXPECTED_NUMBER_OF_SDR_FILES and expected_start_time < start_time + time_tolerance:
@@ -110,7 +114,7 @@ def get_sdr_files(sdr_dir, **kwargs):
         nfiles_found = len(sdr_files)
         expected_start_time = expected_start_time + timedelta(seconds=1)
 
-    # FIXME: Check for sufficient files an possibly raise an exception if not successful.
+    # FIXME: Check for sufficient files and possibly raise an exception if not successful.
     if nfiles_found == EXPECTED_NUMBER_OF_SDR_FILES:
         LOG.debug("Expected number of SDR files found matching the RDR file.")
     else:
