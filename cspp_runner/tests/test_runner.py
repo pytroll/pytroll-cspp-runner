@@ -1,4 +1,4 @@
-# Copyright (c) 2021 pytroll-cspp-runner developers
+# Copyright (c) 2021, 2023 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,10 +19,22 @@ import datetime
 import logging
 import os
 import signal
-import unittest.mock
-
+from unittest.mock import patch
+import pathlib
 import posttroll.message
 import pytest
+
+
+class FakePublisher:
+    """Fake Publisher class."""
+
+    def __init__(self):
+        """Initialize the Fake Publisher class."""
+        self.messages = []
+
+    def send(self, msg):
+        """Fake sending a message."""
+        self.messages.append(msg)
 
 
 @pytest.fixture
@@ -37,21 +49,23 @@ def fakefile(tmp_path):
 
 @pytest.fixture
 def fakemessage(fakefile):
+    """Fake an incoming message with an RDR file for CSPP."""
     return posttroll.message.Message(
-            rawstr="pytroll://file/snpp/viirs/direktempfang file "
-            "pytroll@oflks333.dwd.de 2021-12-20T15:01:02.780614 v1.01 "
-            'application/json {"path": "", "start_time": '
-            '"2021-12-17T09:59:00.300000", "end_time": '
-            '"2021-12-17T10:11:48.400000", "orbit_number": 1, "processing_time": '
-            '"2021-12-17T10:12:06.466000", "uri": '
-            f'"{fakefile!s}", "uid": '
-            '"RNSCA-RVIRS_npp_d20211217_t0959003_e1011484_b00001_'
-            'c20211217101206466000_all-_dev.h5", "sensor": ["viirs"], '
-            '"platform_name": "Suomi-NPP"}')
+        rawstr="pytroll://file/snpp/viirs/direktempfang file "
+        "pytroll@oflks333.dwd.de 2021-12-20T15:01:02.780614 v1.01 "
+        'application/json {"path": "", "start_time": '
+        '"2021-12-17T09:59:00.300000", "end_time": '
+        '"2021-12-17T10:11:48.400000", "orbit_number": 1, "processing_time": '
+        '"2021-12-17T10:12:06.466000", "uri": '
+        f'"{fakefile!s}", "uid": '
+        '"RNSCA-RVIRS_npp_d20211217_t0959003_e1011484_b00001_'
+        'c20211217101206466000_all-_dev.h5", "sensor": ["viirs"], '
+        '"platform_name": "Suomi-NPP"}')
 
 
 @pytest.fixture
 def fake_result_names(tmp_path):
+    """Make a full list of CSPP SDR filenames."""
     p = tmp_path / "results"
     all = []
     for lbl in ["GMTCO", "SVM02", "SVM09", "SVM10", "SVM12"]:
@@ -72,6 +86,7 @@ def fake_result_names(tmp_path):
 
 @pytest.fixture
 def fake_results(tmp_path, fake_result_names):
+    """Fake a CSPP result of SDR files."""
     p = tmp_path / "results"
     p.mkdir(parents=True, exist_ok=True)
     created = []
@@ -86,48 +101,44 @@ def test_run_fullswath(tmp_path, fakefile, fakemessage, caplog):
     """Test the runner with a single fullswath file."""
     from cspp_runner.runner import ViirsSdrProcessor
 
-    with unittest.mock.patch("cspp_runner.runner.ThreadPool") as crT, \
-         unittest.mock.patch("cspp_runner.runner.fix_rdrfile") as csr:
+    fake_publisher = FakePublisher()
+
+    with patch("cspp_runner.runner.ThreadPool") as crT, \
+            patch("cspp_runner.runner.fix_rdrfile") as csr:
         csr.return_value = (os.fspath(fakefile), 42)
-        vsp = ViirsSdrProcessor(1, tmp_path / "outdir")
+        vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
+
         with caplog.at_level(logging.ERROR):
-            vsp.run(fakemessage, "true", [])
+            vsp.run(fakemessage, fake_publisher, "true", [])
         assert crT().apply_async.call_count == 1
         assert caplog.text == ""
 
 
-def test_publish(fake_results):
+def test_publish(tmp_path, fake_results, fakemessage, fake_empty_viirs_sdr_files):
     """Test publishing SDR."""
-    from cspp_runner.runner import publish_sdr
-
-    class FakePublisher:
-        def __init__(self):
-            self.messages = []
-
-        def send(self, msg):
-            self.messages.append(msg)
+    from cspp_runner.runner import ViirsSdrProcessor
 
     fake_publisher = FakePublisher()
 
-    publish_sdr(
-            fake_publisher,
-            fake_results,
-            {"orbit_number": 21200},
-            "wonderland",
-            "test",
-            "treasure/collected/complete",
-            orbit=42)
+    with patch("cspp_runner.runner.ThreadPool"), \
+            patch("cspp_runner.post_cspp.get_sdr_files") as get_sdr_files:
+        vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
+        get_sdr_files.return_value = fake_empty_viirs_sdr_files
+        vsp.orbit_number = 42
+        vsp.message_data = fakemessage.data
+
+        vsp.publish_sdr(fake_publisher, fake_results)
+
     assert len(fake_publisher.messages) == 1
     msg = fake_publisher.messages[0]
-    assert msg.startswith(
-            "pytroll://treasure/collected/complete/SDR/1B/wonderland"
-            "/test/polar/direct_readout dataset")
+
+    assert msg.startswith("pytroll://fake_topic/SDR/1B/polar/direct_readout")
     assert '"end_time": "2021-12-29T13:55:39.700000"' in msg
     assert '"start_time": "2021-12-29T13:42:52.700000"' in msg
 
 
 @pytest.mark.parametrize(
-        "funcname", ["update_lut_files", "update_ancillary_files"])
+    "funcname", ["update_lut_files", "update_ancillary_files"])
 def test_update_missing_env(monkeypatch, tmp_path, funcname):
     """Test updating fails when env missing."""
     monkeypatch.delenv("CSPP_WORKDIR", raising=False)
@@ -136,14 +147,14 @@ def test_update_missing_env(monkeypatch, tmp_path, funcname):
     # should raise exception when no workdir set
     with pytest.raises(EnvironmentError):
         updater(
-                "gopher://dummy/location",
-                os.fspath(tmp_path / "stampfile"),
-                "true")
+            "gopher://dummy/location",
+            os.fspath(tmp_path / "stampfile"),
+            "true")
 
 
 @pytest.mark.parametrize(
-        "funcname,label", [("update_lut_files", "LUT"),
-                           ("update_ancillary_files", "ANC")])
+    "funcname,label", [("update_lut_files", "LUT"),
+                       ("update_ancillary_files", "ANC")])
 def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
     """Test update nominal case."""
     import cspp_runner.runner
@@ -155,7 +166,7 @@ def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
                 "echo")
     assert f"Download command for {label:s}" in caplog.text
     assert caplog.text.split("\n")[2].endswith(
-            f"-W {tmp_path / 'env'!s}")
+        f"-W {tmp_path / 'env'!s}")
     assert "downloaded" in caplog.text
     # I tried to use the technique at
     # https://stackoverflow.com/a/20503374/974555 to patch datetime.now, but
@@ -170,19 +181,20 @@ def test_update_nominal(monkeypatch, tmp_path, caplog, funcname, label):
 
 
 @pytest.mark.parametrize(
-        "funcname", ["update_lut_files", "update_ancillary_files"])
+    "funcname", ["update_lut_files", "update_ancillary_files"])
 def test_update_error(monkeypatch, tmp_path, caplog, funcname):
     """Check that a failed LUT update is logged to stderr.
 
-    And that the stampfile is NOT updated in this case."""
+    And that the stampfile is NOT updated in this case.
+    """
     import cspp_runner.runner
     updater = getattr(cspp_runner.runner, funcname)
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     with caplog.at_level(logging.ERROR):
         updater(
-                "gother://dummy/location",
-                os.fspath(tmp_path / "stampfile"),
-                "false")
+            "gother://dummy/location",
+            os.fspath(tmp_path / "stampfile"),
+            "false")
     assert "exit code 1" in caplog.text
     now = datetime.datetime.utcnow()
     justnow = now - datetime.timedelta(seconds=5)
@@ -198,7 +210,7 @@ def test_check_lut_files_virgin(tmp_path):
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
     res = cspp_runner.runner.check_lut_files(
-            5, 1, "prefix", os.fspath(empty_dir))
+        5, 1, "prefix", os.fspath(empty_dir))
     assert not res
 
 
@@ -214,7 +226,7 @@ def test_check_lut_files_uptodate(tmp_path):
         fn = stamp.with_suffix(f".{dt:%Y%m%d%H%M}")
         fn.touch()
     res = cspp_runner.runner.check_lut_files(
-            5, 1, os.fspath(stamp), "irrelevant")
+        5, 1, os.fspath(stamp), "irrelevant")
     assert res
 
 
@@ -233,59 +245,139 @@ def test_check_lut_files_outofdate(tmp_path, caplog):
     lutfile.touch()
     os.utime(lutfile, (yesteryear.timestamp(),)*2)
     res = cspp_runner.runner.check_lut_files(
-            5, 1,
-            os.fspath(stamp),
-            os.fspath(lut_dir))
+        5, 1,
+        os.fspath(stamp),
+        os.fspath(lut_dir))
     assert not res
 
 
-def test_run_cspp(monkeypatch, tmp_path):
-    """Test running CSPP."""
+def test_run_cspp_one_rdr(monkeypatch, tmp_path, caplog):
+    """Test running CSPP on one RDR file."""
     import cspp_runner.runner
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
-    (tmp_path / "env").mkdir(parents=True)
-    cspp_runner.runner.run_cspp("true", [])
+
+    working_dir = tmp_path / "env"
+    working_dir.mkdir(parents=True)
+    fake_rdr_file = tmp_path / "RNSCA-RVIRS_j02_d20230511_t0016580_e0018234_b02578_c20230511001837310000_drlu_ops.h5"
+    fake_rdr_file.touch()
+
+    with caplog.at_level(logging.DEBUG):
+        cspp_runner.runner.run_cspp(working_dir, "true", [], [fake_rdr_file])
+
+    assert "Run CSPP on 1 RDR file(s):" in caplog.text
+    assert "Popen call arguments: ['true', " in caplog.text
+    assert "RNSCA-RVIRS_j02_d20230511_t0016580_e0018234_b02578_c20230511001837310000_drlu_ops.h5" in caplog.text
 
 
-def test_spawn_cspp_nominal(tmp_path, caplog, fake_result_names, monkeypatch):
+def test_run_cspp_list_of_rdr_granules(monkeypatch, tmp_path, caplog):
+    """Test running CSPP on a list of rdr files (granules)."""
+    import cspp_runner.runner
+    monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
+
+    working_dir = tmp_path / "env"
+    working_dir.mkdir(parents=True)
+    fake_rdr_granule1 = tmp_path / "RNSCA-RVIRS_npp_d20230618_t1217289_e1218543_b00001_c20230618121900480000_drlu_ops.h5"  # noqa
+    fake_rdr_granule1.touch()
+    fake_rdr_granule2 = tmp_path / "RNSCA-RVIRS_npp_d20230618_t1218543_e1220196_b00001_c20230618122016129000_drlu_ops.h5"  # noqa
+    fake_rdr_granule2.touch()
+
+    fake_rdr_files = [fake_rdr_granule1, fake_rdr_granule2]
+    with caplog.at_level(logging.DEBUG):
+        cspp_runner.runner.run_cspp(working_dir, "true", [], fake_rdr_files)
+
+    assert "Run CSPP on 2 RDR file(s):" in caplog.text
+    assert "Popen call arguments: ['true', " in caplog.text
+    assert "RNSCA-RVIRS_npp_d20230618_t1217289_e1218543_b00001_c20230618121900480000_drlu_ops.h5" in caplog.text
+    assert "RNSCA-RVIRS_npp_d20230618_t1218543_e1220196_b00001_c20230618122016129000_drlu_ops.h5" in caplog.text
+
+
+@patch('posttroll.message.Message')
+@patch('cspp_runner.runner.create_tmp_workdir')
+def test_spawn_cspp_nominal(create_tmp_workdir, message, tmp_path, caplog,
+                            fakemessage, fake_empty_viirs_sdr_files, monkeypatch):
     """Test spawning CSPP successfully."""
-    import cspp_runner.runner
+    from cspp_runner.runner import ViirsSdrProcessor
+
+    message.return_value = 'my fake dummy message'
+    fake_publisher = FakePublisher()
+
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     (tmp_path / "env").mkdir(parents=True)
 
-    def fake_run_cspp(call, args, *rdrs):
-        p = tmp_path / "working_dir"
-        p.mkdir()
-        for f in fake_result_names:
-            (p / f.name).touch()
-        return os.fspath(p)
-    with unittest.mock.patch("cspp_runner.runner.run_cspp") as crr:
-        crr.side_effect = fake_run_cspp
-        with caplog.at_level(logging.DEBUG):
-            (wd, rf) = cspp_runner.runner.spawn_cspp(
-                os.fspath(
-                    tmp_path /
-                    "RNSCA-RVIRS_j01_d20211229_t1342527_e1355397_b21199_c20211229144433345000_all-_dev.h5"),
-                viirs_sdr_call="touch",
-                viirs_sdr_options=[],
-                granule_time_tolerance=10)
+    create_tmp_workdir.return_value = tmp_path / "working_dir"
+
+    def fake_run_cspp(workdir, call, args, *rdrs):
+        workdir.mkdir()
+        for f in fake_empty_viirs_sdr_files:
+            (workdir / f.name).touch()
+            os.remove(f)
+        return
+
+    with patch("cspp_runner.runner.ThreadPool"), \
+            patch("cspp_runner.post_cspp.get_sdr_files") as get_sdr_files:
+        vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
+        vsp.message_data = fakemessage.data
+
+        get_sdr_files.return_value = fake_empty_viirs_sdr_files
+
+        with patch("cspp_runner.runner.run_cspp") as crr:
+            crr.side_effect = fake_run_cspp
+            vsp.working_dir = fake_empty_viirs_sdr_files[0].parent
+            with caplog.at_level(logging.DEBUG):
+                res_files = vsp.spawn_cspp(
+                    pathlib.Path(os.fspath(
+                        tmp_path /
+                        "RNSCA-RVIRS_npp_d20230510_t1430538_e1432180_b59761_c20230512143418235765_drlu_ops.h5")),
+                    [pathlib.Path(os.fspath(
+                        tmp_path /
+                        "RNSCA-RVIRS_npp_d20230510_t1430538_e1432180_b59761_c20230512143418235765_drlu_ops.h5"))] +
+                    [os.fspath(tmp_path / f"file{i:d})")
+                     for i in range(3)],
+                    # "RNSCA-RVIRS_j01_d20211229_t1342527_e1355397_b21199_c20211229144433345000_all-_dev.h5"),
+                    # fake_workingdir,
+                    publisher=fake_publisher,
+                    viirs_sdr_call="touch",
+                    viirs_sdr_options=[],
+                    granule_time_tolerance=10)
+
     assert "Start CSPP" in caplog.text
     assert "CSPP probably failed" not in caplog.text
-    assert "Number of results files" in caplog.text
-    assert len(rf) == 5
+    assert "CSPP SDR processing finished..." in caplog.text
+    assert "Number of SDR results files" in caplog.text
+    assert len(res_files) == 28
 
 
-def test_spawn_cspp_failure(monkeypatch, tmp_path, caplog):
+def test_spawn_cspp_failure(monkeypatch, fakemessage, tmp_path, caplog):
     """Test spawning CSPP unsuccessfully."""
-    import cspp_runner.runner
+    from cspp_runner.runner import ViirsSdrProcessor
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(tmp_path / "env"))
     (tmp_path / "env").mkdir(parents=True)
-    with caplog.at_level(logging.WARNING):
-        (wd, rf) = cspp_runner.runner.spawn_cspp(
-            *[os.fspath(tmp_path / f"file{i:d})")
-                for i in range(4)],
-            viirs_sdr_call="false",
-            viirs_sdr_options=[])
+
+    fake_publisher = FakePublisher()
+
+    with patch("cspp_runner.runner.ThreadPool"):
+        vsp = ViirsSdrProcessor(1, tmp_path / "outdir", 'fake_topic')
+        vsp.message_data = fakemessage.data
+
+        fake_rdr_file = tmp_path / "RNSCA-RVIRS_j02_d20230511_t0016580_e0018234_b02578_c20230511001837310000_drlu_ops.h5"  # noqa
+        fake_rdr_file.touch()
+        fake_working_dir = tmp_path / 'work_dir'
+        fake_working_dir.mkdir()
+        vsp.working_dir = fake_working_dir
+
+        with caplog.at_level(logging.WARNING):
+            rf = vsp.spawn_cspp(fake_rdr_file,
+                                [pathlib.Path(os.fspath(
+                                    tmp_path /
+                                    "RNSCA-RVIRS_npp_d20230510_t1430538_e1432180_b59761_c20230512143418235765_drlu_ops.h5"))] +  # noqa
+                                [os.fspath(tmp_path / f"file{i:d})")
+                                 for i in range(3)],
+                                publisher=fake_publisher,
+                                viirs_sdr_call="false",
+                                viirs_sdr_options=[],
+                                granule_time_tolerance=10
+                                )
+
     assert len(rf) == 0
     assert "CSPP probably failed!" in caplog.text
 
@@ -310,22 +402,19 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
 
     fake_workdir = tmp_path / "workdir"
 
-    def fake_spawn_cspp(current_granule, *glist, viirs_sdr_call,
-                        viirs_sdr_options):
-        fake_workdir.mkdir(exist_ok=True, parents=True)
-
-        return (os.fspath(fake_workdir), fake_results)
     yaml_conf = tmp_path / "publisher.yaml"
     with yaml_conf.open(mode="wt", encoding="ascii") as fp:
         fp.write(fake_publisher_config_contents)
 
     monkeypatch.setenv("CSPP_WORKDIR", os.fspath(fake_workdir))
-    with unittest.mock.patch("posttroll.subscriber.Subscribe") as psS, \
-         unittest.mock.patch("cspp_runner.runner.Publish"), \
-         unittest.mock.patch("cspp_runner.runner.spawn_cspp", new=fake_spawn_cspp) as crs, \
-         caplog.at_level(logging.DEBUG):
+    with patch("posttroll.subscriber.Subscribe") as psS, \
+            patch("cspp_runner.runner.Publish"), \
+            patch("cspp_runner.runner.ViirsSdrProcessor.spawn_cspp") as spawn_cspp, \
+            caplog.at_level(logging.DEBUG):
+
         psS.return_value.__enter__.return_value.recv.return_value = [fakemessage]
-        crs.return_value = (os.fspath(fake_workdir), fake_results)
+        spawn_cspp.return_value = fake_results
+
         try:
             signal.signal(signal.SIGALRM, handler)
             signal.alarm(2)
@@ -335,21 +424,22 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                                "gopher://example.org/luts", "true",
                                "gopher://example.org/ancs",
                                os.fspath(tmp_path / "stamp_anc"),
-                               "true", "/file/available/rdr", "earth",
-                               "test",
-                               "/product/available/sdr", tmp_path / "sdr/results",
+                               "true", "/subscribe/file/available/rdr",
+                               "/product/available/sdr",
+                               tmp_path / "sdr_results",
                                "true", [],
+                               granule_time_tolerance=10,
                                ncpus=2,
                                publisher_config=os.fspath(yaml_conf))
         except TimeOut:
             pass  # probably all is fine
         else:
-            assert False  # should never get here
+            raise AssertionError()  # should never get here
             # ensure that out of date LUT updated
-        with unittest.mock.patch("cspp_runner.runner.check_lut_files",
-                                 autospec=True) as crc, \
-             unittest.mock.patch("cspp_runner.runner.update_lut_files",
-                                 autospec=True) as cru:
+        with patch("cspp_runner.runner.check_lut_files",
+                   autospec=True) as crc, \
+            patch("cspp_runner.runner.update_lut_files",
+                  autospec=True) as cru:
             crc.return_value = False
             try:
                 signal.signal(signal.SIGALRM, handler)
@@ -360,20 +450,19 @@ def test_rolling_runner(tmp_path, caplog, monkeypatch, fakemessage,
                                    "gopher://example.org/luts", "true",
                                    "gopher://example.org/ancs",
                                    os.fspath(tmp_path / "stamp_anc"),
-                                   "true", "/file/available/rdr", "earth",
-                                   "test",
+                                   "true", "/file/available/rdr",
                                    "/product/available/sdr", tmp_path / "sdr/results",
                                    "true", [], 2)
             except TimeOut:
                 pass
             else:
-                assert False
+                raise AssertionError()  # should never get here
             cru.assert_called_with(
-                    "gopher://example.org/luts",
-                    os.fspath(tmp_path / "stamp_lut"),
-                    "true")
+                "gopher://example.org/luts",
+                os.fspath(tmp_path / "stamp_lut"),
+                "true")
+
     assert "Dynamic ancillary data will be updated" in caplog.text
-    assert "Received message data" in caplog.text
+    assert "Received message:" in caplog.text
     assert "Now that SDR processing has completed" in caplog.text
-    assert "Seconds to process SDR: " in caplog.text
     assert "Seconds since granule start: " in caplog.text
