@@ -35,7 +35,7 @@ import time
 import yaml
 from glob import glob
 from datetime import datetime, timedelta
-from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import Pool
 from urllib.parse import urlparse
 
 import posttroll.subscriber
@@ -291,7 +291,8 @@ class ViirsSdrProcessor:
 
     def __init__(self, ncpus, level1_home, publish_topic):
         """Initialize the VIIRS processing class."""
-        self.pool = ThreadPool(ncpus)
+        # self.pool = ThreadPool(ncpus)
+        self.pool = Pool(ncpus)
         self.ncpus = ncpus
         self.publish_topic = publish_topic
 
