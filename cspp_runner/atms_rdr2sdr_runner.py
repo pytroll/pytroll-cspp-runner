@@ -231,6 +231,7 @@ def create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home):
 
     orbit = 0
     platform = 'unknown'
+    result = {}
     for filename in sdr_filepaths:
         bname = os.path.basename(str(filename))
         logger.debug("SDR filename: %s", str(bname))
@@ -242,8 +243,9 @@ def create_subdir_from_filepaths(sdr_filepaths, sdr_file_patterns, sdr_home):
         stime = result.get('start_time')
         if stime and stime < start_time:
             start_time = stime
-            orbit = result.get('orbit', 0)
-            platform = PLATFORM_LONGNAMES.get(result['platform_shortname'])
+
+    orbit = result.get('orbit', 0)
+    platform = PLATFORM_LONGNAMES.get(result.get('platform_shortname', 'unknown'))
 
     subdirname = "{platform}_{dtime:%Y%m%d_%H%M}_{orbit:05d}".format(platform=platform.lower().replace('-', ''),
                                                                      dtime=start_time, orbit=orbit)
