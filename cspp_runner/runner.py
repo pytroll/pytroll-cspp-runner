@@ -178,9 +178,9 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         cwd=cspp_workdir,
         stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-    while (line := proc.stdout.readline()):
+    while (line:=proc.stdout.readline()):
         LOG.info(line.decode("utf-8").strip('\n'))
-    while (line := proc.stderr.readline()):
+    while (line:=proc.stderr.readline()):
         LOG.error(line.decode("utf-8").strip('\n'))
 
     try:
@@ -208,7 +208,7 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         LOG.info(f"{what:s} downloaded. {what:s}-update timestamp file = " + filename)
 
 
-def _check_environment(*args):
+def check_environment(*args):
     """Check that requested environment variables are set.
 
     Raise EnvironmentError if they are not.

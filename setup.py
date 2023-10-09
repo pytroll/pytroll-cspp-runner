@@ -42,8 +42,8 @@ NAME = 'cspp_runner'
 
 setup(name=NAME,
       description=DESCRIPTION,
-      author='Adam Dybroe',
-      author_email='adam.dybroe@smhi.se',
+      author='The Pytroll Team',
+      author_email='pytroll@googlegroups.com',
       classifiers=["Development Status :: 3 - Alpha",
                    "Intended Audience :: Science/Research",
                    "License :: OSI Approved :: GNU General Public License v3 " +
@@ -54,10 +54,9 @@ setup(name=NAME,
       url="https://github.com/pytroll/pytroll-cspp-runner",
       long_description=long_description,
       packages=['cspp_runner', ],
+      scripts=['bin/atms_dr_runner.py'],
       data_files=[],
       install_requires=['posttroll>1.7', 'trollsift'],
-      # test_requires=['mock'],
-      # test_suite='cspp_runner.tests.suite',
       python_requires='>=3.8',
       zip_safe=False,
       use_scm_version=True
