@@ -80,7 +80,6 @@ def parse_args():
 
 def main():
     """Start the CSPP runner."""
-
     CONF = configparser.ConfigParser()
 
     args = parse_args()
@@ -135,10 +134,10 @@ def main():
         lut_update_stampfile_prefix,
         lut_dir,
         url_jpss_remote_lut_dir,
-        OPTIONS["mirror_jpss_luts"],
+        OPTIONS.get("mirror_jpss_luts"),
         url_jpss_remote_anc_dir,
         anc_update_stampfile_prefix,
-        OPTIONS["mirror_jpss_ancillary"],
+        OPTIONS.get("mirror_jpss_ancillary"),
         subscribe_topics,
         site,
         OPTIONS["mode"],

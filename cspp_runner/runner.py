@@ -1,4 +1,5 @@
-# Copyright (c) 2013 - 2021, 2023 pytroll-cspp-runner developers
+#
+# Copyright (c) 2013 - 2023 Pytroll Developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,10 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Level-1 processing for VIIRS Suomi NPP Direct Readout data. Using the CSPP
-level-1 processor from the SSEC, Wisconsin, based on the ADL from the NASA DRL.
-Listen for pytroll messages from Nimbus (NPP file dispatch) and trigger
-processing on direct readout RDR data (granules or full swaths)
+"""Wrapper for SDR of VIIRS Direct Readout data.
+
+Using the CSPP level-1 processor from the SSEC, Wisconsin, based on the ADL
+from the NASA DRL.  Listen for pytroll messages from Nimbus (NPP file dispatch)
+and trigger processing on direct readout RDR data (granules or full swaths).
+
 """
 
 
@@ -72,7 +75,9 @@ LOG = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 def check_lut_files(thr_days, url_download_trial_frequency_hours,
                     lut_update_stampfile_prefix, lut_dir):
-    """Check if the LUT files under ${path_to_cspp_cersion}/anc/cache/luts are
+    """Check if LUT files are present and fresh.
+
+    Check if the LUT files under ${path_to_cspp_cersion}/anc/cache/luts are
     available and check if they are fresh. Return True if fresh/new files
     exists, otherwise False.
     It is files like these (with incredible user-unfriendly) names:
@@ -85,8 +90,7 @@ def check_lut_files(thr_days, url_download_trial_frequency_hours,
     checking is a bit difficult. We check if there are any files at all, and then
     how old the latest file is, and hope that this is sufficient.
 
-    """
-
+    """  # noqa
     now = datetime.utcnow()
 
     tdelta = timedelta(
@@ -135,14 +139,14 @@ def check_lut_files(thr_days, url_download_trial_frequency_hours,
 def update_lut_files(url_jpss_remote_lut_dir,
                      lut_update_stampfile_prefix, mirror_jpss_luts,
                      timeout=600):
-    """
-    Function to update the ancillary LUT files
+    """Update LUT files for VIIRS processing.
+
+    Updates the ancillary LUT files over internet.
 
     These files need to be updated at least once every week, in order to
     achieve the best possible SDR processing.
 
     """
-
     update_files(
         url_jpss_remote_lut_dir,
         lut_update_stampfile_prefix,
@@ -152,9 +156,14 @@ def update_lut_files(url_jpss_remote_lut_dir,
 
 
 def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
-                 what,
-                 timeout=600):
-    check_environment("CSPP_WORKDIR")
+                 what, timeout=600):
+    """Do the update of the LUT files on disk.
+
+    Runs the fetch over internet from a separate working directory, and calls
+    the JPSS script in a separat shell.
+
+    """
+    _check_environment("CSPP_WORKDIR")
     cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
     my_env = os.environ.copy()
@@ -216,8 +225,7 @@ def check_environment(*args):
 def update_ancillary_files(url_jpss_remote_anc_dir,
                            anc_update_stampfile_prefix, mirror_jpss_ancillary,
                            timeout=600):
-    """
-    Function to update the dynamic ancillary data.
+    """Update the dynamic ancillary files needed for CSPP VIIRS SDR processing.
 
     These data files encompass Two Line Element (TLE) and Polar Wander (PW)
     files, and should preferably be updated daily. This is done automatically
@@ -282,8 +290,7 @@ def run_cspp(viirs_sdr_call, viirs_sdr_options, *viirs_rdr_files):
 
 def publish_sdr(publisher, result_files, mda, site, mode,
                 publish_topic, **kwargs):
-    """Publish the messages that SDR files are ready
-    """
+    """Publish the messages that SDR files are ready."""
     if not result_files:
         return
 
@@ -291,11 +298,11 @@ def publish_sdr(publisher, result_files, mda, site, mode,
     to_send = mda.copy()
     # Delete the RDR uri and uid from the message:
     try:
-        del(to_send['uri'])
+        del (to_send['uri'])
     except KeyError:
         LOG.warning("Couldn't remove URI from message")
     try:
-        del(to_send['uid'])
+        del (to_send['uid'])
     except KeyError:
         LOG.warning("Couldn't remove UID from message")
 
@@ -337,8 +344,7 @@ def publish_sdr(publisher, result_files, mda, site, mode,
 
 
 def spawn_cspp(current_granule, *glist, viirs_sdr_call, viirs_sdr_options, **kwargs):
-    """Spawn a CSPP run on the set of RDR files given"""
-
+    """Spawn a CSPP run on the set of RDR files given."""
     start_time = kwargs.get('start_time')
     platform_name = kwargs.get('platform_name')
 
@@ -376,6 +382,7 @@ def spawn_cspp(current_granule, *glist, viirs_sdr_call, viirs_sdr_options, **kwa
 
 
 def get_local_ips():
+    """Get the local IP address of where CSPP is running."""
     inet_addrs = [netifaces.ifaddresses(iface).get(netifaces.AF_INET)
                   for iface in netifaces.interfaces()]
     ips = []
@@ -387,13 +394,10 @@ def get_local_ips():
 
 
 class ViirsSdrProcessor:
-
-    """
-    Container for the VIIRS SDR processing based on CSPP
-
-    """
+    """Container for the VIIRS SDR processing based on CSPP."""
 
     def __init__(self, ncpus, level1_home):
+        """Initialize the VIIRS processing class."""
         self.pool = ThreadPool(ncpus)
         self.ncpus = ncpus
 
@@ -408,7 +412,7 @@ class ViirsSdrProcessor:
         self.message_data = None
 
     def initialise(self):
-        """Initialise the processor"""
+        """Initialise the processor."""
         self.fullswath = False
         self.cspp_results = []
         self.glist = []
@@ -416,12 +420,12 @@ class ViirsSdrProcessor:
         self.result_files = []
 
     def pack_sdr_files(self, subd):
+        """Pack the SDR files together in one directory per pass."""
         return pack_sdr_files(self.result_files, self.sdr_home, subd)
 
     def run(self, msg, viirs_sdr_call, viirs_sdr_options,
             granule_time_tolerance=10):
-        """Start the VIIRS SDR processing using CSPP on one rdr granule"""
-
+        """Start the VIIRS SDR processing using CSPP on one rdr granule."""
         if msg:
             LOG.debug("Received message: " + str(msg))
 
@@ -588,8 +592,10 @@ def npp_rolling_runner(
         ncpus=1,
         publisher_config=None
 ):
-    """The NPP/VIIRS runner. Listens and triggers processing on RDR granules."""
+    """Live runner to process the VIIRS SDR data calling the necessary CSPP script.
 
+    It listens and triggers processing on RDR granules using CSPP.
+    """
     LOG.info("*** Start the Suomi-NPP/JPSS SDR runner:")
     LOG.info("THR_LUT_FILES_AGE_DAYS = " + str(thr_lut_files_age_days))
 
@@ -601,15 +607,20 @@ def npp_rolling_runner(
         LOG.info("...or download has been attempted recently! " +
                  "No url downloading....")
     else:
-        LOG.warning("Files in the LUT dir are non existent or old. " +
-                    "Start url fetch...")
-        update_lut_files(url_jpss_remote_lut_dir,
-                         lut_update_stampfile_prefix, mirror_jpss_luts)
+        if not mirror_jpss_luts:
+            LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
+        else:
+            LOG.warning("Files in the LUT dir are non existent or old. " +
+                        "Start url fetch...")
+            update_lut_files(url_jpss_remote_lut_dir,
+                             lut_update_stampfile_prefix, mirror_jpss_luts)
 
-    LOG.info("Dynamic ancillary data will be updated. " +
-             "Start url fetch...")
-    update_ancillary_files(url_jpss_remote_anc_dir,
-                           anc_update_stampfile_prefix, mirror_jpss_ancillary)
+    if not mirror_jpss_ancillary:
+        LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
+    else:
+        LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
+        update_ancillary_files(url_jpss_remote_anc_dir,
+                               anc_update_stampfile_prefix, mirror_jpss_ancillary)
 
     ncpus_available = multiprocessing.cpu_count()
     LOG.info("Number of CPUs available = " + str(ncpus_available))
@@ -639,6 +650,7 @@ def npp_rolling_runner(
 
                 LOG.debug(
                     "Received message data = %s", str(viirs_proc.message_data))
+                proc_start_time = datetime.utcnow()
                 tobj = viirs_proc.pass_start_time
                 LOG.info("Time used in sub-dir name: " +
                          str(tobj.strftime("%Y-%m-%d %H:%M")))
@@ -660,6 +672,10 @@ def npp_rolling_runner(
 
                 make_okay_files(viirs_proc.sdr_home, subd)
 
+                LOG.info("Seconds to process SDR: {:.1f}".format(
+                    (datetime.utcnow() - proc_start_time).total_seconds()))
+                LOG.info("Seconds since granule start: {:.1f}".format(
+                    (datetime.utcnow() - tobj).total_seconds()))
                 LOG.info("Now that SDR processing has completed, " +
                          "check for new LUT files...")
                 fresh = check_lut_files(
@@ -670,14 +686,18 @@ def npp_rolling_runner(
                     LOG.info("...or download has been attempted recently! " +
                              "No url downloading....")
                 else:
-                    LOG.warning("Files in the LUT dir are " +
-                                "non existent or old. " +
-                                "Start url fetch...")
-                    update_lut_files(
-                        url_jpss_remote_lut_dir,
-                        lut_update_stampfile_prefix, mirror_jpss_luts)
+                    if not mirror_jpss_luts:
+                        LOG.debug("No LUT update script provided. No LUT updating will be attempted.")
+                    else:
+                        LOG.warning("Files in the LUT dir are non existent or old. " +
+                                    "Start url fetch...")
+                        update_lut_files(
+                            url_jpss_remote_lut_dir,
+                            lut_update_stampfile_prefix, mirror_jpss_luts)
 
-                LOG.info("Dynamic ancillary data will be updated. " +
-                         "Start url fetch...")
-                update_ancillary_files(url_jpss_remote_anc_dir,
-                                       anc_update_stampfile_prefix, mirror_jpss_ancillary)
+                if not mirror_jpss_ancillary:
+                    LOG.debug("No ancillary data update script provided. CSPP ancillary data will not be updated.")
+                else:
+                    LOG.info("Dynamic ancillary data will be updated. Start url fetch...")
+                    update_ancillary_files(url_jpss_remote_anc_dir,
+                                           anc_update_stampfile_prefix, mirror_jpss_ancillary)
