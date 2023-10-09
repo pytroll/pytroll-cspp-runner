@@ -74,7 +74,7 @@ def test_run_atms_from_message(caplog, monkeypatch, fake_cspp_workdir,
 
     sdr_call = 'atms_sdr.sh'
     sdr_options = ['-d', '-a']
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         dirpath = run_atms_from_message(fake_atms_posttroll_message, sdr_call, sdr_options)
 
     assert os.path.dirname(dirpath) == str(fake_cspp_workdir)
