@@ -1,0 +1,19 @@
+[DEFAULT]
+# Location to store Sensor Data Record (SDR) files after CSPP SDR processing
+# is completed.
+level1_home = /san1/polar_in/direct_readout/npp/atms/sdr/
+
+working_dir = /san1/cspp/work
+
+# CSPP-atms batch script and parameters:
+atms_sdr_call = atms_sdr.sh -a -d
+
+# Options to pass to the viirs_sdr_call
+# see viirs_sdr.sh --help for explanation
+atms_sdr_options = ['-a', '-d']
+
+# Topic to use for publishing posttroll messages
+publish_topic = /file/atms/sdr
+
+# Posttroll topics to listen to (comma separated)
+subscribe_topics = /file/atms/rdr

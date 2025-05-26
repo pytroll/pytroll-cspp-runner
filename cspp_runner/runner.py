@@ -163,7 +163,8 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
     the JPSS script in a separat shell.
 
     """
-    _check_environment("CSPP_WORKDIR")
+    check_environment("CSPP_WORKDIR")
+
     cspp_workdir = os.environ.get("CSPP_WORKDIR", '')
     pathlib.Path(cspp_workdir).mkdir(parents=True, exist_ok=True)
     my_env = os.environ.copy()
@@ -208,7 +209,7 @@ def update_files(url_jpss_remote_dir, update_stampfile_prefix, mirror_jpss,
         LOG.info(f"{what:s} downloaded. {what:s}-update timestamp file = " + filename)
 
 
-def _check_environment(*args):
+def check_environment(*args):
     """Check that requested environment variables are set.
 
     Raise EnvironmentError if they are not.
