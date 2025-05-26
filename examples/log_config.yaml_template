@@ -1,0 +1,19 @@
+version: 1
+disable_existing_loggers: false
+formatters:
+  pytroll:
+    format: '[%(asctime)s %(levelname)-8s %(name)s] %(message)s'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: pytroll
+    stream: ext://sys.stdout
+loggers:
+  posttroll:
+    level: ERROR
+    propagate: false
+    handlers: [console,]
+root:
+  level: DEBUG
+  handlers: [console,]

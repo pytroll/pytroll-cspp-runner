@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2015, 2016 Martin Raspaud
+# Copyright (c) 2023 Pytroll Developers
 
 # Author(s):
 
-#   Martin Raspaud <martin.raspaud@smhi.se>
+#   Adam Dybbroe <Firstname.Lastname at smhi.se>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Version file.
-"""
+"""Handling the yaml configurations."""
 
-__version__ = "0.0.1"
+import yaml
+from yaml import UnsafeLoader
+
+
+def read_config(config_filepath):
+    """Read and extract config information."""
+    with open(config_filepath, 'r') as fp_:
+        config = yaml.load(fp_, Loader=UnsafeLoader)
+
+    return config

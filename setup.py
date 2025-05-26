@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013 - 2022 pytroll-cspp-runner developers
+# Copyright (c) 2013 - 2022, 2025 pytroll-cspp-runner developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Setup for cspp-runner.
-"""
+"""Setup for cspp-runner."""
 
 from setuptools import setup
+from setuptools import find_packages
 
 try:
     # HACK: https://github.com/pypa/setuptools_scm/issues/190#issuecomment-351181286
@@ -42,8 +42,8 @@ NAME = 'cspp_runner'
 
 setup(name=NAME,
       description=DESCRIPTION,
-      author='Adam Dybroe',
-      author_email='adam.dybroe@smhi.se',
+      author='The Pytroll Team',
+      author_email='pytroll@googlegroups.com',
       classifiers=["Development Status :: 3 - Alpha",
                    "Intended Audience :: Science/Research",
                    "License :: OSI Approved :: GNU General Public License v3 " +
@@ -53,12 +53,12 @@ setup(name=NAME,
                    "Topic :: Scientific/Engineering"],
       url="https://github.com/pytroll/pytroll-cspp-runner",
       long_description=long_description,
-      packages=['cspp_runner', ],
+      license='GPLv3',
+      packages=find_packages(),
+      scripts=['bin/atms_dr_runner.py'],
       data_files=[],
       install_requires=['posttroll>1.7', 'trollsift'],
-      # test_requires=['mock'],
-      # test_suite='cspp_runner.tests.suite',
-      python_requires='>=3.8',
+      python_requires='>=3.10',
       zip_safe=False,
       use_scm_version=True
       )

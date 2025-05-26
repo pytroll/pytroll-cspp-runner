@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=60", "wheel", "setuptools_scm[toml]>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "cspp_runner/version.py"
+
+[tool.isort]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+profile = "black"
+skip_gitignore = true
+default_section = "THIRDPARTY"
+known_first_party = "cspp_runner"
+line_length = 120

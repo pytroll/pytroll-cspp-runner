@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2014 - 2020 Pytroll
-
-# Author(s):
-
-#   Adam.Dybbroe <adam.dybbroe@smhi.se>
-#   Lars Ørum Rasmussen <ras@dmi.dk>
+# Copyright (c) 2014 - 2025 Pytroll developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,12 +22,15 @@ import os
 from datetime import datetime, timedelta
 import re
 import logging
-from pkg_resources import get_distribution, DistributionNotFound
+
 try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-    # package is not installed
-    pass
+    from cspp_runner.version import version as __version__  # noqa
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "No module named cspp_runner.version. This could mean "
+        "you didn't install 'cspp_runner' properly. Try reinstalling ('pip "
+        "install cspp_runner').")
+
 
 LOG = logging.getLogger(__name__)
 
@@ -41,18 +39,22 @@ _RE_NPP_STAMP = re.compile(
 
 
 class NPPStamp(object):
+    """A data structure for a NPP/JPSS VIIRS SDR file stamp.
 
-    """ A NPP stamp is:
+    A NPP stamp is:
     <platform>_d<start_date>_t<start_time>_e<end_time>_b<orbit_number>
+
     """
 
     def __init__(self, platform, start_time, end_time, orbit_number):
+        """Initialize the class."""
         self.platform = platform
         self.start_time = start_time
         self.end_time = end_time
         self.orbit_number = orbit_number
 
     def __str__(self):
+        """Documentation."""
         date = self.start_time.strftime('%Y%m%d')
         start = (self.start_time.strftime('%H%M%S') +
                  str(self.start_time.microsecond / 100000)[0])
@@ -63,7 +65,8 @@ class NPPStamp(object):
 
 
 def get_npp_stamp(filename):
-    """A unique stamp for a granule.
+    """Get a unique stamp for a granule.
+
     <name>_d<date>_t<start-time>_e<end-time>_b<orbit_number>
     """
     match = _RE_NPP_STAMP.match(os.path.basename(filename))
@@ -108,7 +111,8 @@ def get_sdr_times(filename):
 
 
 def is_same_granule(filename1, filename2, sec_tolerance):
-    """
+    """Check if an SDR file is a granule.
+
     Take two SDR/RDR files and check their observation time from the filename
     and determine if they belong to the same granule. Small deviations can
     happen between RDR files and corresponding SDR files.
@@ -118,7 +122,6 @@ def is_same_granule(filename1, filename2, sec_tolerance):
     'SVM11_npp_d20180121_t0903382_e0905024_b32305_c20180121091145126446_cspp_dev.h5'
 
     """
-
     t1_ = get_datetime_from_filename(filename1)
     t2_ = get_datetime_from_filename(filename2)
     delta_t = abs(t1_ - t2_)

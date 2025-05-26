@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2013 - 2023 Pytroll Developers
+# Copyright (c) 2013 - 2023, 2025 Pytroll Developers
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

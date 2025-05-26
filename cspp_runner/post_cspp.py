@@ -1,6 +1,11 @@
-"""Scanning the CSPP working directory and cleaning up after CSPP processing
-and move the SDR granules to a destination directory"""
+"""Scanning the CSPP working directory and cleaning up after processing.
 
+Scanning the CSPP working directory and cleaning up after CSPP processing
+and move the SDR granules to a destination directory.
+"""
+
+
+import fnmatch
 import os
 import pathlib
 import stat
@@ -13,8 +18,9 @@ LOG = logging.getLogger(__name__)
 
 TLE_SATNAME = {'npp': 'SUOMI NPP',
                'j01': 'NOAA-20',
+               'j02': 'NOAA-21',
                'noaa20': 'NOAA-20',
-               'noaa21': 'NOAA-20'
+               'noaa21': 'NOAA-21'
                }
 
 PLATFORM_NAME = {'Suomi-NPP': 'npp',
@@ -24,8 +30,7 @@ PLATFORM_NAME = {'Suomi-NPP': 'npp',
 
 
 def cleanup_cspp_workdir(workdir):
-    """Clean up the CSPP working dir after processing"""
-
+    """Clean up the CSPP working dir after processing."""
     filelist = glob('%s/*' % workdir)
     for s in filelist:
         if os.path.isfile(s):
@@ -39,19 +44,15 @@ def cleanup_cspp_workdir(workdir):
 
 
 def get_ivcdb_files(sdr_dir):
-    """Locate the ivcdb files need for the VIIRS Active Fires algorithm. These
-       files are not yet part of the standard output of CSPP versio 3.1 and
-       earlier. Use '-d' flag and locate the files in sub-directories
+    """Get the ivcdb files need for the VIIRS Active Fires algorithm.
 
+    These files are not yet part of the standard output of CSPP versio 3.1 and
+    earlier. Use '-d' flag and locate the files in sub-directories.
     """
     # From the Active Fires Insuidetallation G:
     # find . -type f -name 'IVCDB*.h5' -exec mv {} ${PWD} \;
-
-    import fnmatch
-    import os
-
     matches = []
-    for root, dirnames, filenames in os.walk(sdr_dir):
+    for root, _, filenames in os.walk(sdr_dir):
         for filename in fnmatch.filter(filenames, 'IVCDB*.h5'):
             matches.append(os.path.join(root, filename))
 
@@ -59,9 +60,10 @@ def get_ivcdb_files(sdr_dir):
 
 
 def get_sdr_files(sdr_dir, **kwargs):
-    """Get the sdr filenames (all M- and I-bands plus geolocation for the
-    direct readout swath"""
+    """Get the sdr filenames.
 
+    All M- and I-bands plus geolocation for the direct readout swath.
+    """
     # VIIRS M-bands + geolocation:
     mband_files = (glob(os.path.join(sdr_dir, 'SVM??_???_*.h5')) +
                    glob(os.path.join(sdr_dir, 'GM??O_???_*.h5')))
@@ -78,8 +80,11 @@ def get_sdr_files(sdr_dir, **kwargs):
 
 
 def create_subdirname(obstime, with_seconds=False, **kwargs):
-    """Generate the pps subdirectory name from the start observation time, ex.:
-    'npp_20120405_0037_02270'"""
+    """Generate the pps subdirectory name from the start observation time.
+
+    Example:
+       'npp_20120405_0037_02270'
+    """
     sat = kwargs.get('platform_name', 'npp')
     platform_name = PLATFORM_NAME.get(sat, sat)
 
@@ -106,8 +111,7 @@ def create_subdirname(obstime, with_seconds=False, **kwargs):
 
 
 def make_okay_files(base_dir, subdir_name):
-    """Make okay file to signal that all SDR files have been placed in
-    destination directory"""
+    """Make okay file to signal that all SDR files have been placed in destination directory."""
     import subprocess
     okfile = os.path.join(base_dir, subdir_name + ".okay")
     subprocess.call(['touch', okfile])
@@ -115,9 +119,7 @@ def make_okay_files(base_dir, subdir_name):
 
 
 def pack_sdr_files(sdrfiles, base_dir, subdir):
-    """Copy the SDR files to the sub-directory under the *subdir* directory
-    structure"""
-
+    """Copy the SDR files to the sub-directory under the *subdir* directory structure."""
     path = pathlib.Path(base_dir) / subdir
     path.mkdir(exist_ok=True, parents=True)
 
